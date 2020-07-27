@@ -184,7 +184,7 @@ class initPps:
         self.second_line_offset_adj = 0
 
         ################################################
-        self.numSsp          = 0
+        #self.numSsp          = 0
         self.bitsPerPixel    = 0
         self.maxSeSize_Y     = 0
         self.maxSeSize_C     = 0
@@ -348,7 +348,7 @@ class initPps:
         self.second_line_offset_adj   = second_line_offset_adj
 
         # Below parameters are constants calculated from PPS values
-        self.numSsp          = numSsps
+        self.numSsps         = numSsps
         self.bitsPerPixel    = self.bits_per_pixel >> 4 # Removed Fractional 4-bits, Original Value!
         self.maxSeSize_Y     = maxSeSize_Y
         self.maxSeSize_C     = maxSeSize_C
@@ -519,7 +519,7 @@ class initPps:
         self.second_line_offset_adj = second_line_offset_adj
 
         # Below parameters are constants calculated from PPS values
-        self.numSsp = numSsps
+        self.numSsps = numSsps
         self.bitsPerPixel = self.bits_per_pixel >> 4  # Removed Fractional 4-bits, Original Value!
         self.maxSeSize_Y = maxSeSize_Y
         self.maxSeSize_C = maxSeSize_C

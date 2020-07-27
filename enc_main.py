@@ -21,8 +21,8 @@ def dsc_encoder(pps, pic, op, buf):
     prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
     origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
 
-    fifo_size = int(pps.muxWordSize + defines.MAX_SE_SIZE + 7 / 8)
-    seSizefifo_size = int((8 * (pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) + 7) / 8)
+    fifo_size = int(pps.muxWordSize + defines.MAX_SE_SIZE + 7 / 8) * 8
+    seSizefifo_size = int((8 * (pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) + 7) / 8) * 8
 
     FIFO_Y = DSCFifo(fifo_size)
     FIFO_Co = DSCFifo(fifo_size)

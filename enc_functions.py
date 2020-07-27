@@ -1109,20 +1109,23 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
 
 def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
-    for i in range(dsc_const.numSsp):
+    for i in range(pps.numSsps):
         if vlc_var.shifterCnt[i] < dsc_const.maxSeSize[i]:
-            for j in range(pps.mux_word_size / 8):
-                sz = FIFOs.fullness
+            for j in range(int(pps.muxWordSize / 8)):
+                sz = FIFOs[i].fullness
                 if sz >= 8:
-                    d = fifo_get_bits(FIFOs[i], 8, 0)
+                    #d = fifo_get_bits(FIFOs[i], 8, 0)
+                    d = FIFOs[i].fifo_get_bits(8, 0)
                 elif 0 < sz < 8:
-                    d = fifo_get_bits(FIFOs[i], sz, 0) << (8 - sz)
+                    #d = fifo_get_bits(FIFOs[i], sz, 0) << (8 - sz)
+                    d = int(FIFOs[i].fifo_get_bits(sz, 0)) << (8 - sz)
                 else:
                     d = 0
                 ##### Print out encoded data #####
                 # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
-                putbits(d, 8, buf_var.outbuf, buf_var.postMuxNumBits)
-        sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
+                putbits(d, 8, buf_var)
+        #sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
+        sz = seSizeFIFOs[i].fifo_get_bits(8, 0)
         vlc_var.shifterCnt[i] -= sz
 
 

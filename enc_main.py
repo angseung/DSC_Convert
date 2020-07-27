@@ -1,6 +1,7 @@
 import numpy as np
 from init_enc_params import *
 from enc_functions import *
+from dsc_fifo import DSCFifo
 
 def dsc_encoder(pps, pic, op, buf):
     ################ Declare variables used to each block ################
@@ -19,10 +20,13 @@ def dsc_encoder(pps, pic, op, buf):
     prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
     origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.uint32)
 
-    #FIFO_Y
-    #FIFO_Co
-    #FIFO_Cg
-    #FIFO_Y2
+    fifo_size = int(pps.muxWordSize + defines.MAX_SE_SIZE + 7 / 8)
+    FIFO_Y = DSCFifo()
+    FIFO_Co = DSCFifo()
+    FIFO_Cg = DSCFifo()
+    FIFO_Y2 = DSCFifo()
+
+    FIFOs = [FIFO_Y, FIFO_Co, FIFO_Cg, FIFO_Y2]
 
     oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -40,7 +44,7 @@ def dsc_encoder(pps, pic, op, buf):
 
     ###########################################################
     ######################## Main Loop ########################
-    while(not done ) :
+    while (not done) :
         #################### Get input line ###################
         if hPos == 0 :
             ## Get input image when the first pixel of each line starts

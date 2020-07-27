@@ -44,7 +44,7 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
     for cpnt in range(define.NUM_COMPONENTS):
         max_val = -1
         min_val = 99999
-        print(currLine.shape, cpnt)
+        #print(currLine.shape, cpnt)
         for i in range(fc1_start, fc1_end):
             pixel_val = currLine[cpnt, define.PADDING_LEFT + hPos + 1]
 
@@ -420,24 +420,6 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, fl
         rc_var.mppState = 0
         rc_var.bitSaveMode = 0
 
-    # if cond1:
-    #     if (not ich_var.ichSelected) & (mpsel >= 3):
-    #         rc_var.mppState += 1
-    #         if (rc_var.mppState >= 2):
-    #             rc_var.bitSaveMode = 2
-    #
-    #     elif (not ich_var.ichSelected) & (predActivity >= bitSaveThresh):
-    #         rc_var.bitSaveMode = rc_var.bitSaveMode
-    #     elif ich_var.ichSelected:
-    #         rc_var.bitSaveMode = max(1, rc_var.bitSaveMode)
-    #     else:
-    #         rc_var.mppState = 0
-    #         rc_var.bitSaveMode = 0
-    #
-    # else:
-    #     rc_var.mppState = 0
-    #     rc_var.bitSaveMode = 0
-
     ## Short-Term QP Adjustment Start...
     ## make condition to implement switch-case method
     ######### stqp Condition decision..######
@@ -492,39 +474,12 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, fl
 
         if (case1 or case3 or case5): rc_var.stQp = curQp + incr_amount
         if (case2 or case4 or case6): rc_var.stQp = curQp
-        #
-        #
-        # if (curQp == rc_var.prev2Qp):
-        #     cond = ((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor))
-        #     if cond:
-        #         rc_var.stQp = curQp + incr_amount
-        #     else:
-        #         rc_var.stQp = curQp
-        #
-        # elif (rc_var.prev2Qp < curQp):
-        #     cond = (((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) &
-        #             curQp < pps.rc_quant_incr_limit0)
-        #     if cond:
-        #         rc_var.stQp = curQp + incr_amount
-        #     else:
-        #         rc_var.stQp = curQp
-        #
-        # elif (curQp < pps.rc_quant_incr_limit1):
-        #     rc_var.stQp = curQp + incr_amount
-        #
-        # else:
-        #     rc_var.stQp = curQp
 
     elif cond8:
         rc_var.stQp = rc_var.prevQp
 
     elif cond1:  # overflow avoid condition
         rc_var.stQp = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][0]  # cond1
-        # max_QP = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][1]
-
-    #
-    # do_increment_logic = (rc_var.bufferFullness >= 64) & \
-    #                      (vlc_var.codedGroupSize > tgtPlusOffset) # avoid increasing QP immediately after edge
 
     rc_var.stQp = CLAMP(rc_var.stQp, min_QP, max_QP)
 

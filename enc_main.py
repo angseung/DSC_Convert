@@ -9,7 +9,7 @@ def dsc_encoder(pps, pic, op, buf):
     defines = initDefines(pps)
     dsc_const = initDscConstants(pps, defines)
     ich_var = initIchVariables(defines)
-    pred_var = initPredVariables(defines)
+    pred_var = initPredVariables(defines, dsc_const)
     flat_var = initFlatVariables(defines)
     vlc_var = initVlcVariables(defines)
     rc_var = initRcVariables()
@@ -48,6 +48,7 @@ def dsc_encoder(pps, pic, op, buf):
     vPos = 0
     sampModCnt = 0
     groupCnt = 0
+    pixelCount = 0
     done = 0
 
     ###########################################################
@@ -86,7 +87,9 @@ def dsc_encoder(pps, pic, op, buf):
 
         #################### P or ICH Selection ###################
         ###################### ICH operation ######################
-        orig = origLine[:, hPos + defines.PADDING_LEFT]
+        orig = np.zeros((origLine.shape[0] + 1, 1)).astype(np.int32)
+        tmp = (origLine[0 : dsc_const.numComponents, hPos + defines.PADDING_LEFT]).reshape((dsc_const.numComponents, 1))
+        orig[0 : dsc_const.numComponents, :] = tmp
         IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig,
                                        prevLine)
 
@@ -143,10 +146,10 @@ def dsc_encoder(pps, pic, op, buf):
             ########### Store reconstructed value in prevLineBuf (double buffer) ############
             for mod_hPos in range(hPos - 2 + defines.PADDING_LEFT, hPos + 1 + defines.PADDING_LEFT):
                 for cpnt in range(dsc_const.numComponents):
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1 :
+                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
-                    else :
+                    else:
                         tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
@@ -158,7 +161,7 @@ def dsc_encoder(pps, pic, op, buf):
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer()
 
-            rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, flat_var, defines)
+            rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
             # End of Group processing
 
         # End of line

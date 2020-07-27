@@ -26,7 +26,7 @@ class initIchVariables:
         self.maxIchError = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
 class initPredVariables:
-    def __init__(self, defines):
+    def __init__(self, defines, dsc_const):
         self.predErr = np.zeros((defines.NUM_COMPONENTS, defines.BP_RANGE)).astype(np.int32)
         self.quantizedResidual = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
         self.quantizedResidualMid = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
@@ -38,6 +38,8 @@ class initPredVariables:
         self.maxMidError = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
         self.max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
         self.quantizedResidualSize = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
+        self.bpCount = 0 ## 2020.07.27 added
+        self.prevLinePred = np.zeros(int((dsc_const.sliceWidth + defines.PRED_BLK_SIZE - 1) / defines.PRED_BLK_SIZE), ) ## 2020.07.27 added
 
 
 class initFlatVariables:

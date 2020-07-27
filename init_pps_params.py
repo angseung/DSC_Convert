@@ -361,7 +361,7 @@ class initPps:
         self.somewhat_flat_qp_thresh = 7 + (2 * (self.bits_per_component - 8))
         self.somewhat_flat_qp_delta = 4
         self.flatness_det_thresh = 2 * 2 ^ ((self.bitsPerPixel) - 8)
-        self.muxWordSize = muxWordSize
+        self.muxWordSize = muxWordSize ## 2020.07.27 added
 
     def cal_params_dec(self):
         # self.dsc_version_major = user_opt['dsc_version_major']
@@ -532,4 +532,4 @@ class initPps:
         self.somewhat_flat_qp_thresh = 7 + (2 * (self.bits_per_component - 8))
         self.somewhat_flat_qp_delta = 4
         self.flatness_det_thresh = 2 * 2 ^ ((self.bitsPerPixel) - 8)
-        self.muxWordSize = muxWordSize
+        self.muxWordSize = muxWordSize ## 2020.07.27 added

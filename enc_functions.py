@@ -269,7 +269,7 @@ def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc
     return [rc_var.currentScale, rc_var.rcXformOffset]
 
 
-def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, flat_var, define):
+def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
@@ -384,7 +384,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, fl
         predActivity = rc_var.prevQp + vlc_var.predictedSize[0] + max(vlc_var.predictedSize[1],
                                                                       vlc_var.predictedSize[2])
 
-    bitSaveThresh = define.cpntBitDepth[0] + define.cpntBitDepth[1] - 2
+    bitSaveThresh = dsc_const.cpntBitDepth[0] + dsc_const.cpntBitDepth[1] - 2
 
     ### *MODEL NOTE* MN_RC_SHORT_TERM
     ## bitSaveMode Decision Start...
@@ -774,10 +774,10 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
     min_bp_vector = 3
     max_bp_vector = 10
     pixel_mod_cnt = hPos % defines.PRED_BLK_SIZE
-    cursamp = (hPos / defines.PRED_BLK_SIZE) % defines.BP_SIZE
+    cursamp = int(hPos / defines.PRED_BLK_SIZE) % defines.BP_SIZE
     ref_value = 1 << (dsc_const.cpntBitDepth[cpnt] - 1)
     max_cpnt = dsc_const.numComponents - 1
-    bp_sads = np.zeros(defines.BP_RANGE, )
+    bp_sads = (np.zeros(defines.BP_RANGE, )).astype(np.int32)
 
     if (pps.native_420):
         if (cpnt > 1):
@@ -815,7 +815,7 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
 
     if cpnt == 0:
         pred_var.edgeDetected = 0  ### Reset edgeDetected
-    if pixdiff > (defines.BP_EDGE_STRENGTH << (dsc_const.bits_per_component - 8)):
+    if pixdiff > (defines.BP_EDGE_STRENGTH << (pps.bits_per_component - 8)):
         pred_var.edgeDetected = 1  ### Edge is detected
 
     if cpnt == max_cpnt:  ### at the last component
@@ -843,29 +843,31 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
 
     ################ Select minimum SAD among [candidate_vector] ###############
     ### Last pixel in a group
-    if (pixel_mod_cnt == defines.PRED_BLK_SIZE - 1):
+    if (pixel_mod_cnt == (defines.PRED_BLK_SIZE - 1)):
         # Track last 3 3-pixel SADs for each component (each is 8 bit)
+
         for candidate_vector in range(defines.BP_RANGE):
-            pred_var.lastErr[cpnt][cursamp][candidate_vector] = pred_var.predErr[cpnt][candidate_vector]
+            pred_var.lastErr[cpnt, cursamp, candidate_vector] = pred_var.predErr[cpnt, candidate_vector]
 
         if (cpnt == max_cpnt):
             for candidate_vector in range(defines.BP_RANGE):
                 bp_sads[candidate_vector] = 0
 
-                for i in range(defines.BP_RANGE):
+                for i in range(defines.BP_SIZE): ## TODO CHECK (BP_RANGE -> BP_SIZE)
                     sad3x1 = 0
 
                     # Add up all components
                     for j in range(dsc_const.numComponents):
                         # (3 or 4) times of 8-bits
-                        sad3x1 += pred_var.lastErr[j][i][candidate_vector]
+                        sad3x1 += pred_var.lastErr[j, i, candidate_vector] ## TODO CHECK INDEX AGAIN!! (i, j has been switched)
 
                     sad3x1 = min(511, sad3x1)  # sad3x1 is 9 bits
 
                     # Add up groups of BP_SIZE
                     bp_sads[candidate_vector] += sad3x1  # 11-bit SAD (3 times of 9-bits)
                 # Each bp_sad can have a max value of 63*9 pixels * 3 components = 1701 or 11 bits
-                bp_sads[candidate_vector] >>= 3  # SAD is truncated to 8-bit for comparison
+
+                bp_sads[candidate_vector] = bp_sads.item(candidate_vector) >> 3  # SAD is truncated to 8-bit for comparison
 
             min_err = bp_sads[0]
             min_pred = defines.PT_MAP
@@ -886,9 +888,9 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
 
             # BP is choosen in this condition
             if pred_var.bpCount >= 3 and pred_var.lastEdgeCount < defines.BP_EDGE_COUNT:
-                pred_var.prevLinePred[hPos / defines.PRED_BLK_SIZE] = min_pred
+                pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = min_pred
             else:
-                pred_var.prevLinePred[hPos / defines.PRED_BLK_SIZE] = defines.PT_MAP
+                pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = defines.PT_MAP
 
 
 def IsForceMpp(pps, dsc_const, rc_var):
@@ -996,7 +998,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             suffix_size[unit] = adj_predicted_size[unit]
 
             if unit == 0:
-                if vlc_var.prevIchSelected:
+                if ich_var.prevIchSelected:
                     prefix_size[unit] = 2
 
                 else:
@@ -1223,14 +1225,14 @@ def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
 
 def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first_line_flag, is_odd_line):
     reserved = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
-    read_pixel = np.array(4, )
+    read_pixel = np.zeros(defines.NUM_COMPONENTS, )
     prevline_index = entry - reserved
 
     ############# settle particular range of hPos into same hPos #############
     # CASE 1 : pixelsInGroup == 3, CASE 2 : pixelsInGroup == 4
     # CASE 1 ||| hpos==(0,1,2 -> 1) | (3,4,5 -> 4) | (6,7,8 -> 7) | (9,10,11 -> 10)
     # CASE 2 ||| hpos==(0,1,2,3 -> 2) | (4,5,6,7 -> 6) | (8,9,10,11 -> 10) | (12,13,14,15 -> 14)
-    mod_hPos = (hPos / dsc_const.pixelsInGroup) * dsc_const.pixelsInGroup + (dsc_const.pixelsInGroup / 2)
+    mod_hPos = int(hPos / dsc_const.pixelsInGroup) * dsc_const.pixelsInGroup + int(dsc_const.pixelsInGroup / 2)
 
     if pps.native_420 or pps.native_422:
         mod_hPos = CLAMP(hPos, 2, pps.slice_width - 1 - 2)
@@ -1239,27 +1241,29 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
         mod_hPos = CLAMP(mod_hPos, defines.ICH_PIXELS_ABOVE / 2, pps.slice_width - 1 - (defines.ICH_PIXELS_ABOVE / 2))
 
     ############# Read out "ICH pixel value" at "entry" #############
-    if (~first_line_flag and prevline_index >= 0):
+    if ((not first_line_flag) and prevline_index >= 0):
         ## TODO native_420 mode
         ## TODO native_420 mode
-        read_pixel[0] = prevLine[0, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[1] = prevLine[1, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[2] = prevLine[2, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[2] = prevLine[3, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[0] = prevLine[0, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[1] = prevLine[1, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[2] = prevLine[2, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        #read_pixel[2] = prevLine[3, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        ## no needed for native_444 mode
+
     else:
         read_pixel[0] = ich_var.pixels[0, entry]
         read_pixel[1] = ich_var.pixels[1, entry]
         read_pixel[2] = ich_var.pixels[2, entry]
         read_pixel[3] = ich_var.pixels[3, entry]
 
-    return read_pixel[:]
+    return read_pixel
 
 
 def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig, prevLine):
     if sampModCnt == 0:
         ich_var.origWithinQerr = 1  # Reset wit no error
 
-    max_qerr = np.zeros(4, )
+    max_qerr = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
 
     lowest_sad = 2 ** 30
     first_line_flag = (vPos == 0 or (pps.native_420 and vPos == 1))
@@ -1288,7 +1292,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                 # Let Find the Minimum 'weightedSad' Value
                 weighted_sad = 0
                 ich_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag,
-                                          vPos % 2)
+                                          (vPos % 2))
                 diff0 = abs(ich_pixel[0] - orig[0])
                 diff1 = abs(ich_pixel[1] - orig[1])
                 diff2 = abs(ich_pixel[2] - orig[2])
@@ -1361,12 +1365,13 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
             if hit and vlc_var.ichSelected:  ## TODO decoder part
                 loc = j
                 break  # Found one
-
+    j = 0
     ## shifting ICH pixels
     for cpnt in range(dsc_const.numComponents):
         ## Delete from current position "loc" (or delete "LRU")
         for j in range(loc, 0, -1):
-            ich_var.pixels[cpnt][j] = ich_var.pixels[cpnt][j - 1]
+            #print("j : ", j)
+            ich_var.pixels[cpnt, j] = ich_var.pixels[cpnt, j - 1]
         ich_var.valid[loc] = 1
 
         # Insert the most recently reconstructed pixel into MRU
@@ -1377,13 +1382,16 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
 def SampToLineBuf(dsc_const, pps, cpnt, x):
     ## Line Storage (6.3)
     ## Allocate Storage to Store Reconstructed Pixel Value
-    shift_amount = max(dsc_const.cpntBitDepth[cpnt] - pps.linebuf_depth, 0)
-
+    shift_amount = max(dsc_const.cpntBitDepth[cpnt] - pps.line_buf_depth, 0)
+    storedSample = 0
     if (shift_amount > 0):
         rounding = 1 << (shift_amount - 1)
+
     else:
         rounding = 0
 
-        # Max value = 2^linebuf_depth - 1
-        storedSample = min((x + rounding) >> shift_amount, (1 << pps.linebuf_depth) - 1)
-    return storedSample << shift_amount
+        # Max value = 2^line_buf_depth - 1
+        storedSample = min((x + rounding) >> shift_amount, (1 << pps.line_buf_depth) - 1)
+
+    return_val = storedSample << shift_amount
+    return return_val

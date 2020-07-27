@@ -2,6 +2,7 @@ import numpy as np
 from init_enc_params import *
 from enc_functions import *
 from dsc_fifo import DSCFifo
+from dsc_enc_buf import *
 
 def dsc_encoder(pps, pic, op, buf):
     ################ Declare variables used to each block ################
@@ -15,13 +16,13 @@ def dsc_encoder(pps, pic, op, buf):
 
     ########### Declare buffers ########
     # Line Buffer Axis : [Component, hPos]
-    currLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
-    tmp_prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
-    prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
-    origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.uint32)
+    currLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
+    tmp_prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
+    prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
+    origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
 
     fifo_size = int(pps.muxWordSize + defines.MAX_SE_SIZE + 7 / 8)
-    seSizefifo_size = int((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) / 8)
+    seSizefifo_size = int((8 * (pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) + 7) / 8)
 
     FIFO_Y = DSCFifo(fifo_size)
     FIFO_Co = DSCFifo(fifo_size)
@@ -29,11 +30,11 @@ def dsc_encoder(pps, pic, op, buf):
     FIFO_Y2 = DSCFifo(fifo_size)
     FIFOs = [FIFO_Y, FIFO_Co, FIFO_Cg, FIFO_Y2]
 
-    encBalanceFIFO_Y = DSCFifo(seSizefifo_size)
-    encBalanceFIFO_Co = DSCFifo(seSizefifo_size)
-    encBalanceFIFO_Cg = DSCFifo(seSizefifo_size)
-    encBalanceFIFO_Y2 = DSCFifo(seSizefifo_size)
-    encBalanceFIFOs = [encBalanceFIFO_Y, encBalanceFIFO_Co, encBalanceFIFO_Cg, encBalanceFIFO_Y2]
+    seSizeFifo_Y = DSCFifo(seSizefifo_size)
+    seSizeFifo_Co = DSCFifo(seSizefifo_size)
+    seSizeFifo_Cg = DSCFifo(seSizefifo_size)
+    seSizeFifo_Y2 = DSCFifo(seSizefifo_size)
+    seSizeFIFOs = [seSizeFifo_Y, seSizeFifo_Co, seSizeFifo_Cg, seSizeFifo_Y2]
 
     oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -107,8 +108,8 @@ def dsc_encoder(pps, pic, op, buf):
             ######################### Variable Length Encoding (VLC) ####################
             # VLCGroup()
 
-            VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, groupCnt,
-                     fifo_Y, fifo_Co, fifo_Cg, fifo_Y2, mapQLevel, maxResSize, adj_predicted_size)
+            VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
+                     FIFOs, seSizeFIFOs, mapQLevel, maxResSize, adj_predicted_size)
 
             bufferFullness = 0
             bufferFullness += vlc_var.codedGroupSize

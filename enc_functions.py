@@ -732,6 +732,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
             if (pred_var.max_size[unit] >= maxResSize[unit]):
                 pred_var.max_size[unit] = maxResSize[unit]
 
+        pred_var.quantizedResidualSize[unit, sampModCnt] = err_raw_size
         ## TODO decoder part
 
         #############################################################################
@@ -910,23 +911,24 @@ def IsForceMpp(pps, dsc_const, rc_var):
 def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf_var, groupCnt,
              FIFOs, seSizeFIFOs, mapQLevel, maxResSize, adj_predicted_size):
     ######################### Declare variables #########################
-    start_fullness = np.zeros(dsc_const.numSsp, )
-    max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    max_err_p_mode = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    req_size = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT))
-    prefix_size = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    suffix_size = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    add_prefix_one = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+    start_fullness = np.zeros(dsc_const.numSsps, ).astype(np.int32)
+    max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    max_err_p_mode = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    req_size = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
+    prefix_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    suffix_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    add_prefix_one = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
     #########################  Set control varaibles #########################
     if pps.bits_per_pixel == 16 and 3 * mapQLevel[0] <= 3 - adj_predicted_size[0]:
         ich_disallow = 1  # No ICH allowed for special case
+
     else:
         ich_disallow = 0
 
     forceMpp = IsForceMpp(pps, dsc_const, rc_var)
 
-    vlc_var.prevIchSelected = vlc_var.ichSelected
+    ich_var.prevIchSelected = ich_var.ichSelected
 
     #########################################################################
     ####### Calculate maximum bit-width required for each component #########
@@ -936,12 +938,15 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             vlc_var.midpointSelected[unit] = 1  # MPP error
             max_size[unit] = maxResSize[unit]  # maximum bit-width
             max_err_p_mode[unit] = pred_var.maxMidError[unit]
+
             for i in range(defines.SAMPLES_PER_UNIT):
                 req_size[unit][i] = maxResSize[unit]
+
         else:
             vlc_var.midpointSelected[unit] = 0
             max_size[unit] = pred_var.max_size[unit]
             max_err_p_mode[unit] = pred_var.maxError[unit]
+
             for i in range(defines.SAMPLES_PER_UNIT):
                 req_size[unit][i] = pred_var.quantizedResidualSize[unit][i]
 
@@ -954,24 +959,31 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         ########## Predicted size is too small to hold max_size
         if adj_predicted_size[unit] < max_size[unit]:
             suffix_size[unit] = max_size[unit]
+
             if unit == 0:
-                if (vlc_var.prevIchSelected):
+
+                if (ich_var.prevIchSelected):
                     # ICH -> P (add '1' bit)
                     if (max_size[unit] == maxResSize[unit]):
                         prefix_size[unit] = enc_pred_size + 1
+
                     else:
                         prefix_size[unit] = enc_pred_size + 2  # smaller than Max bits (add '1' bit)
                 else:
                     # P -> P (add '1' bit)
                     prefix_size[unit] = enc_pred_size + 1
             else:
+
                 if max_size[unit] == maxResSize[unit]:
                     prefix_size[unit] = enc_pred_size
+
                 else:
                     prefix_size[unit] = enc_pred_size + 1  # smaller than Max bits (add '1' bit)
 
             if unit == 0:
-                if vlc_var.prevIchSelected:
+
+                if ich_var.prevIchSelected:
+
                     if (max_size[unit] != maxResSize[unit]):
                         add_prefix_one[unit] = 1
                 else:
@@ -982,9 +994,11 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         ######### Predicted size is sufficient to hold max_size
         else:
             suffix_size[unit] = adj_predicted_size[unit]
+
             if unit == 0:
                 if vlc_var.prevIchSelected:
                     prefix_size[unit] = 2
+
                 else:
                     prefix_size[unit] = 1
             else:
@@ -996,8 +1010,9 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     #########################################################################
     ###################### Determines P or ICH mode ##########################
-    if vlc_var.prevIchSelected:
+    if ich_var.prevIchSelected:
         ich_pfx = 1
+
     else:  # For escape code, no need to send trailing one for prefix
         ich_pfx = maxResSize[0] + 1 - adj_predicted_size[0]
     bits_ich_mode = ich_pfx + defines.ICH_BITS * dsc_const.pixelsInGroup  # length of encoded bits in case of ich mode
@@ -1078,13 +1093,14 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             prefix_size[0] += 2
             encoding_bits += 2
 
-    for i in range(dsc_const.numSsp):
-        fifo_put_bits(seSizeFIFOs[i], prefix_size[i] + suffix_size[i])
+    for i in range(dsc_const.numSsps):
+        seSizeFIFOs[i].fifo_put_bits(prefix_size.item(i) + suffix_size.item(i), 8)
+        #fifo_put_bits(seSizeFIFOs[i], prefix_size[i] + suffix_size[i])
 
         if prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]:
             print("SE Size FIFO too small")
 
-    if (groupCnt > pps.mux_word_size + defines.MAX_SE_SIZE - 3):
+    if (groupCnt > pps.muxWordSize + defines.MAX_SE_SIZE - 3):
         ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs)
 
     vlc_var.codedGroupSize = encoding_bits
@@ -1109,48 +1125,48 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
 
 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, fifo):
+            max_size, prefix_size, suffix_size, maxResSize, FIFO):
     ################################ Insert flat flag ####################################
     if unit == 0 and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and flat_var.IsQpWithinFlat:
         if flat_var.prevFirstFlat < 0:
-            AddBits()
+            addbits(vlc_var, FIFO, 0, 1)
         else:
-            AddBits()
+            addbits(vlc_var, FIFO, 1, 1)
 
     ################################ Insert flat type ####################################
     if unit == 0 and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and flat_var.firstFlat >= 0:
         if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
-            AddBits(flat_var.flatnessType)
-        AddBits(flat_var.firstFlat)
+            addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
+        addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
 
     ################################ ICH mode ####################################
     if vlc_var.ichSelected:
         #### ICH (unit == 0, prefix + suffix)
-        if unit == 0:
+        if unit == 0: ## LUMA Unit
             if vlc_var.prevIchSelected:
-                AddBits()
+                addbits()
             else:
-                AddBits()
+                addbits()
             for i in range(dsc_const.pixelsInGroup):
                 if dsc_const.ichIndexUnitMap[i] == unit:
-                    AddBits(ich_var.ichLookup[i])
+                    addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
         #### ICH Lookup (unit > 0, suffix)
         else:
             for i in range(dsc_const.pixelsInGroup):
                 if dsc_const.ichIndexUnitMap[i] == unit:
-                    AddBits(ich_var.ichLookup[i])
+                    addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
 
     else:
         if add_prefix_one:
-            AddBits(prefix_size)
+            addbits(vlc_var, FIFO, 1, prefix_size)
         else:
-            AddBits(prefix_size)
+            addbits(vlc_var, FIFO, 0, prefix_size)
 
         for i in range(defines.SAMPLES_PER_UNIT):
             if max_size == maxResSize:
-                AddBits(pred_var.quantizedResidualMid[unit][i], suffix_size)
+                addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
             else:
-                AddBits(pred_var.quantized_residuals[unit][i], suffix_size)
+                addbits(vlc_var, FIFO, pred_var.quantizedResidual.item(unit, i), suffix_size)
 
 
 def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_mode, bits_p_mode, bits_ich_mode):
@@ -1226,15 +1242,15 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
     if (~first_line_flag and prevline_index >= 0):
         ## TODO native_420 mode
         ## TODO native_420 mode
-        read_pixel[0] = prevLine[0][mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[1] = prevLine[1][mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[2] = prevLine[2][mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[2] = prevLine[3][mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[0] = prevLine[0, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[1] = prevLine[1, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[2] = prevLine[2, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[2] = prevLine[3, mod_hPos + prevline_index - (defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
     else:
-        read_pixel[0] = ich_var.pixels[0][entry]
-        read_pixel[1] = ich_var.pixels[1][entry]
-        read_pixel[2] = ich_var.pixels[2][entry]
-        read_pixel[3] = ich_var.pixels[3][entry]
+        read_pixel[0] = ich_var.pixels[0, entry]
+        read_pixel[1] = ich_var.pixels[1, entry]
+        read_pixel[2] = ich_var.pixels[2, entry]
+        read_pixel[3] = ich_var.pixels[3, entry]
 
     return read_pixel[:]
 

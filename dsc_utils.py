@@ -1,7 +1,13 @@
 import numpy as np
 import os
 from PIL import Image
+from dsc_fifo import *
 
+def addbits(vlc_var, FIFO, data, nbits):
+    FIFO.fifo_put_bits(data, nbits)
+    vlc_var.numBits += nbits
+
+    return None
 
 def putbits(val, size, buf):
     if (size > 32):

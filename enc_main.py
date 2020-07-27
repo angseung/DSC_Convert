@@ -2,7 +2,7 @@ import numpy as np
 from init_enc_params import *
 from enc_functions import *
 
-def dsc_encoder(pps, pic):
+def dsc_encoder(pps, pic, op, buf):
     ################ Declare variables used to each block ################
     defines = initDefines(pps)
     dsc_const = initDscConstants(pps, defines)
@@ -151,6 +151,9 @@ def dsc_encoder(pps, pic):
 
         # End of line
         if (hPos >= pps.slice_width) :
+
+            # Mapping Reconstructed Value to Out Picture 'op'
+            op = currline_to_pic(op, vPos, pps, defines, pic_val, currLine)
             # Fill tmp_prevLine outside of dsc_state->sliceWidth (PADDING_LEFT and PADDING_RIGHT)
             # for PADDING LEFT
             for mod_hPos in range(defines.PADDING_LEFT) :

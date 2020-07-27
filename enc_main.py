@@ -10,7 +10,7 @@ def dsc_encoder(pps, pic, op, buf):
     pred_var = initPredVariables(defines)
     flat_var = initFlatVariables(defines)
     vlc_var = initVlcVariables(defines)
-    rc_var = initRcVariables(defines)
+    rc_var = initRcVariables()
 
     ########### Declare buffers ########
     # Line Buffer Axis : [Component, hPos]
@@ -24,12 +24,12 @@ def dsc_encoder(pps, pic, op, buf):
     #FIFO_Cg
     #FIFO_Y2
 
-    oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    modMapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    flatQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    maxResSize = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-    adj_predicted_size = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+    oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    modMapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    flatQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    maxResSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    adj_predicted_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
 
     lbufWidth = pps.slice_width + defines.PADDING_LEFT + defines.PADDING_RIGHT
     hPos = 0

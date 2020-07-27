@@ -631,9 +631,9 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     qlevel = 0
 
     isluma = (cpnt == 0 or cpnt == 3)
-    isluma = isluma or ((pps.is_native_420) and (cpnt == 1))
+    isluma = isluma or ((pps.native_420) and (cpnt == 1))
 
-    isYUV = (pps.is_dsc_version_minor == 2) and (dsc_const.cpntBitDepth[0] == dsc_const.cpntBitDepth[1])
+    isYUV = (pps.dsc_version_minor == 2) and (dsc_const.cpntBitDepth[0] == dsc_const.cpntBitDepth[1])
 
     if isluma:
         qlevel = dsc_const.quantTableLuma[qp]
@@ -647,23 +647,23 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     return qlevel
 
 
-def SamplePredict(defines, cpnt, hPos, sampModCnt, prevLine, currLine, predType, groupQuantizedResidual,
+def SamplePredict(defines, cpnt, hPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
                   qLevel, cpntBitDepth):
     # TODO h_offset_array_idx is equal to group count value
     # hPos = (0,1,2 -> 0) (3,4,5 -> 3) (6,7,8 -> 6) (9,10,11 -> 9)
-    h_offset_array_idx = (hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT + defines.PADDING_LEFT
+    h_offset_array_idx = int(hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT + defines.PADDING_LEFT
 
     # organize samples into variable array defined in dsc spec
-    c = prevLine[h_offset_array_idx - 1]
-    b = prevLine[h_offset_array_idx]
-    d = prevLine[h_offset_array_idx + 1]
-    e = prevLine[h_offset_array_idx + 2]
-    a = currLine[h_offset_array_idx - 1]
+    c = prevLine[cpnt, h_offset_array_idx - 1]
+    b = prevLine[cpnt, h_offset_array_idx]
+    d = prevLine[cpnt, h_offset_array_idx + 1]
+    e = prevLine[cpnt, h_offset_array_idx + 2]
+    a = currLine[cpnt, h_offset_array_idx - 1]
 
-    filt_c = FILT3(prevLine[h_offset_array_idx - 2], prevLine[h_offset_array_idx - 1], prevLine[h_offset_array_idx])
-    filt_b = FILT3(prevLine[h_offset_array_idx - 1], prevLine[h_offset_array_idx], prevLine[h_offset_array_idx + 1])
-    filt_d = FILT3(prevLine[h_offset_array_idx], prevLine[h_offset_array_idx + 1], prevLine[h_offset_array_idx + 2])
-    filt_e = FILT3(prevLine[h_offset_array_idx + 1], prevLine[h_offset_array_idx + 2], prevLine[h_offset_array_idx + 3])
+    filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2], prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx])
+    filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1])
+    filt_d = FILT3(prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2])
+    filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
 
     if (predType == defines.PT_LEFT):  # Only at first line
         p = a
@@ -716,7 +716,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
     """
     # Loop for each unit (YYY CoCoCo CgCgCg)
     for unit in range(dsc_const.unitsPerGroup):
-        cpnt = dsc_const.unitCtype[unit]
+        cpnt = unit
 
         qlevel = mapQLevel[cpnt]
 

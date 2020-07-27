@@ -16,27 +16,27 @@ qlevel_chroma_16bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10,
 
 class initIchVariables:
     def __init__(self, defines):
-        self.pixels = np.zeros((defines.NUM_COMPONENTS, (32 - 7)))  ## Todo
-        self.valid  = np.zeros(32)  ## Todo
+        self.pixels = np.zeros((defines.NUM_COMPONENTS, (32 - 7))).astype(np.int32)  ## Todo
+        self.valid  = np.zeros(32).astype(np.int32)  ## Todo
         self.ichSelected = 0
         self.prevIchSelected = 0
-        self.ichPixels = np.zeros((defines.MAX_PIXELS_PER_GROUP, defines.NUM_COMPONENTS))
-        self.ichLookup = np.zeros(defines.MAX_PIXELS_PER_GROUP, )
-        self.origWithinQerr = np.zeros(defines.MAX_PIXELS_PER_GROUP, )
-        self.maxIchError = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+        self.ichPixels = np.zeros((defines.MAX_PIXELS_PER_GROUP, defines.NUM_COMPONENTS)).astype(np.int32)
+        self.ichLookup = np.zeros(defines.MAX_PIXELS_PER_GROUP, ).astype(np.int32)
+        self.origWithinQerr = np.zeros(defines.MAX_PIXELS_PER_GROUP, ).astype(np.int32)
+        self.maxIchError = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
 class initPredVariables:
     def __init__(self, defines):
-        self.predErr = np.zeros((defines.NUM_COMPONENTS, defines.BP_RANGE))
-        self.quantizedResidual = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT))
-        self.quantizedResidualMid = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT))
+        self.predErr = np.zeros((defines.NUM_COMPONENTS, defines.BP_RANGE)).astype(np.int32)
+        self.quantizedResidual = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
+        self.quantizedResidualMid = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.SAMPLES_PER_UNIT)).astype(np.int32)
         self.lastEdgeCount = 0
         self.edgeDetected = 0
-        self.lastErr = np.zeros((defines.NUM_COMPONENTS, defines.BP_SIZE, defines.BP_RANGE))
-        self.midpointRecon = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.MAX_PIXELS_PER_GROUP))
-        self.maxError = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-        self.maxMidError = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-        self.max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+        self.lastErr = np.zeros((defines.NUM_COMPONENTS, defines.BP_SIZE, defines.BP_RANGE)).astype(np.int32)
+        self.midpointRecon = np.zeros((defines.MAX_UNITS_PER_GROUP, defines.MAX_PIXELS_PER_GROUP)).astype(np.int32)
+        self.maxError = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+        self.maxMidError = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+        self.max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
 
 class initFlatVariables:
@@ -48,8 +48,8 @@ class initFlatVariables:
         self.prevFirstFlat = 0 ## Todo
         self.flatnessType = 0
         self.prevFlatnessType = 0 ## Todo
-        self.flatnessMemory = np.zeros(defines.GROUPS_PER_SUPERGROUP, )
-        self.flatnessIdxMemory = np.zeros(defines.GROUPS_PER_SUPERGROUP, )
+        self.flatnessMemory = np.zeros(defines.GROUPS_PER_SUPERGROUP, ).astype(np.int32)
+        self.flatnessIdxMemory = np.zeros(defines.GROUPS_PER_SUPERGROUP, ).astype(np.uint32)
         self.flatnessCurPos = 0
         self.flatnessCnt = 0
         self.IsQpWithinFlat = False
@@ -59,11 +59,12 @@ class initVlcVariables:
     def __init__(self, defines):
         self.numBits = 0
         self.postMuxNumBits = 0
-        self.rcSizeUnit = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+        self.rcSizeUnit = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.codedGroupSize = 0
-        self.predictedSize = np.zeros(defines.MAX_UNITS_PER_GROUP, )
-        self.midpointSelected = np.zeros(defines.MAX_UNITS_PER_GROUP, )
+        self.predictedSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
+        self.midpointSelected = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.forceMpp = 0
+        self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
 
 class initRcVariables:
     def __init__(self):

@@ -997,15 +997,15 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     #########################################################################
     ###################### Determines P or ICH mode ##########################
     if vlc_var.prevIchSelected:
-        alt_pfx = 1
-    else:
-        alt_pfx = maxResSize[0] + 1 - adj_predicted_size[0]
-    bits_ich_mode = alt_pfx + defines.ICH_BITS * dsc_const.pixelsInGroup
+        ich_pfx = 1
+    else:  # For escape code, no need to send trailing one for prefix
+        ich_pfx = maxResSize[0] + 1 - adj_predicted_size[0]
+    bits_ich_mode = ich_pfx + defines.ICH_BITS * dsc_const.pixelsInGroup  # length of encoded bits in case of ich mode
 
-    sel_ich = IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_mode, bits_p_mode,
+    sel_ich = IchDecision(pps, defines, flat_var, dsc_const, ich_var, ich_pfx, max_err_p_mode, bits_p_mode,
                           bits_ich_mode)
 
-    if (sel_ich and ich_var.origWithinQerr and (not forceMpp) and (not ich_disallow)):
+    if (sel_ich and ich_var.origWithinQerr and (not forceMpp) and (not ich_disallow)):  # At first unit
         vlc_var.ichSelected = 1
         encoding_bits = bits_ich_mode  # encoded bit size for this group
     else:
@@ -1022,31 +1022,67 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     #########################################################################
     ########################### Encoding Process ############################
+    # get prefix and encode each units
     ## Todo AddBits function
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFOs[0])
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFOs[1])
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFOs[2])
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFOs[3])
+    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
+            max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0])
+    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
+            max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1])
+    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 2, groupCnt, add_prefix_one[2],
+            max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2])
+    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
+            max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3])
 
     if vlc_var.ichSelected:
+        encoding_bits = bits_ich_mode
+        prefix_size[0] = ich_pfx
+        prefix_size[1] = ich_pfx
+        prefix_size[2] = ich_pfx
+        prefix_size[3] = ich_pfx
+
+        suffix_size[0] = defines.ICH_BITS
+        suffix_size[1] = defines.ICH_BITS
+        suffix_size[2] = defines.ICH_BITS
+        suffix_size[3] = defines.ICH_BITS
         vlc_var.rcSizeUnit[0] = dsc_const.pixelsInGroup * defines.ICH_BITS + 1
         vlc_var.rcSizeUnit[1] = 0
         vlc_var.rcSizeUnit[2] = 0
         vlc_var.rcSizeUnit[3] = 0
     else:
+        encoding_bits = bits_p_mode
+        suffix_size[0] *= defines.SAMPLES_PER_UNIT
+        suffix_size[1] *= defines.SAMPLES_PER_UNIT
+        suffix_size[2] *= defines.SAMPLES_PER_UNIT
+        suffix_size[3] *= defines.SAMPLES_PER_UNIT
+        # rate control size uses max required size plus 1 (for prefix value of 0)
         vlc_var.rcSizeUnit[0] = max_size[0] * defines.SAMPLES_PER_UNIT + 1
         vlc_var.rcSizeUnit[1] = max_size[1] * defines.SAMPLES_PER_UNIT + 1
         vlc_var.rcSizeUnit[2] = max_size[2] * defines.SAMPLES_PER_UNIT + 1
         vlc_var.rcSizeUnit[3] = max_size[3] * defines.SAMPLES_PER_UNIT + 1
 
+        # Predict size for next unit for this component ((required_size[0]+required_size[1]+2*required_size[2])/4)
         vlc_var.predictedSize[0] = (2 + req_size[0][0] + req_size[0][1] + 2 * req_size[0][2]) >> 2
         vlc_var.predictedSize[1] = (2 + req_size[1][0] + req_size[1][1] + 2 * req_size[1][2]) >> 2
         vlc_var.predictedSize[2] = (2 + req_size[2][0] + req_size[2][1] + 2 * req_size[2][2]) >> 2
         vlc_var.predictedSize[3] = (2 + req_size[3][0] + req_size[3][1] + 2 * req_size[3][2]) >> 2
+
+    if groupCnt % defines.GROUPS_PER_SUPERGROUP == 3 and flat_var.IsQpWithinFlat:
+        prefix_size[0] += 1
+        encoding_bits += 1
+
+    if groupCnt % defines.GROUPS_PER_SUPERGROUP == 0 and flat_var.firstFlat >= 0:
+        if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
+            prefix_size[0] += 3
+            encoding_bits += 3
+        else:
+            prefix_size[0] += 2
+            encoding_bits += 2
+
+    for i in range(dsc_const.numSsp):
+        fifo_put_bits(seSizeFIFOs[i], prefix_size[i] + suffix_size[i])
+
+        if prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]:
+            print("SE Size FIFO too small")
 
     if (groupCnt > pps.mux_word_size + defines.MAX_SE_SIZE - 3):
         ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs)

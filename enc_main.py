@@ -21,12 +21,19 @@ def dsc_encoder(pps, pic, op, buf):
     origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.uint32)
 
     fifo_size = int(pps.muxWordSize + defines.MAX_SE_SIZE + 7 / 8)
-    FIFO_Y = DSCFifo()
-    FIFO_Co = DSCFifo()
-    FIFO_Cg = DSCFifo()
-    FIFO_Y2 = DSCFifo()
+    seSizefifo_size = int((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) / 8)
 
+    FIFO_Y = DSCFifo(fifo_size)
+    FIFO_Co = DSCFifo(fifo_size)
+    FIFO_Cg = DSCFifo(fifo_size)
+    FIFO_Y2 = DSCFifo(fifo_size)
     FIFOs = [FIFO_Y, FIFO_Co, FIFO_Cg, FIFO_Y2]
+
+    encBalanceFIFO_Y = DSCFifo(seSizefifo_size)
+    encBalanceFIFO_Co = DSCFifo(seSizefifo_size)
+    encBalanceFIFO_Cg = DSCFifo(seSizefifo_size)
+    encBalanceFIFO_Y2 = DSCFifo(seSizefifo_size)
+    encBalanceFIFOs = [encBalanceFIFO_Y, encBalanceFIFO_Co, encBalanceFIFO_Cg, encBalanceFIFO_Y2]
 
     oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)

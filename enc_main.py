@@ -14,22 +14,22 @@ def dsc_encoder(pps, pic, op, buf):
 
     ########### Declare buffers ########
     # Line Buffer Axis : [Component, hPos]
-    currLine = np.zeros((3, pps.chunk_size + defines.PADDING_LEFT))
-    tmp_prevLine = np.zeros((3, pps.chunk_size + defines.PADDING_LEFT))
-    prevLine = np.zeros((3, pps.chunk_size + defines.PADDING_LEFT))
-    origLine = np.zeros((3, pps.chunk_size + defines.PADDING_LEFT))
+    currLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
+    tmp_prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
+    prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT))
+    origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.uint32)
 
     #FIFO_Y
     #FIFO_Co
     #FIFO_Cg
     #FIFO_Y2
 
-    oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
-    mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
-    modMapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
-    flatQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
-    maxResSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
-    adj_predicted_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int16)
+    oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    modMapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    flatQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    maxResSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
+    adj_predicted_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
     lbufWidth = pps.slice_width + defines.PADDING_LEFT + defines.PADDING_RIGHT
     hPos = 0
@@ -82,7 +82,7 @@ def dsc_encoder(pps, pic, op, buf):
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
         if (sampModCnt == 2) or (hPos == pps.slice_width - 1):
-            FlatnessAdjustment()
+            flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, currLine, flatQLevel)
 
             if (sampModCnt < 2):
                 if sampModCnt == 0 :

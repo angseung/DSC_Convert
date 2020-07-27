@@ -44,15 +44,15 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
     for cpnt in range(define.NUM_COMPONENTS):
         max_val = -1
         min_val = 99999
-
+        print(currLine.shape, cpnt)
         for i in range(fc1_start, fc1_end):
             pixel_val = currLine[cpnt, define.PADDING_LEFT + hPos + 1]
 
             if max_val < pixel_val: max_val = pixel_val
             if min_val > pixel_val: min_val = pixel_val
 
-        is_somewhatflat_falied = (max - min) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
-        is_veryflat_failed = (max - min) > vf_thresh
+        is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
+        is_veryflat_failed = (max_val - min_val) > vf_thresh
 
         if not is_somewhatflat_falied:
             t1_somewhat_flat = False
@@ -77,8 +77,8 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
                 if max_val < pixel_val: max_val = pixel_val
                 if min_val > pixel_val: min_val = pixel_val
 
-            is_somewhatflat_falied = (max - min) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
-            is_veryflat_failed = (max - min) > vf_thresh
+            is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
+            is_veryflat_failed = (max_val - min_val) > vf_thresh
 
             if not is_somewhatflat_falied:
                 t2_somewhat_flat = False
@@ -111,13 +111,13 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
     if (supergroup_cnt == 0):
         flat_var.flatnessCnt = 0
 
-    flat_var.flatnessMemort[flat_var.flanessCnt] = isOrigFlatHIndex(flatness_index, currLine, rc_var, define, dsc_const,
+    flat_var.flatnessMemory[flat_var.flatnessCnt] = isOrigFlatHIndex(flatness_index, currLine, rc_var, define, dsc_const,
                                                                     pps, flatQLevel)
     flat_var.flatnessCurPos = isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
-    flat_var.flatnessIdxMemory[flat_var.flanessCnt] = supergroup_cnt
+    flat_var.flatnessIdxMemory[flat_var.flatnessCnt] = supergroup_cnt
 
-    if (flat_var.flatnessMemort[flat_var.flanessCnt] > 0):  # If determined as flat
-        flat_var.flanessCnt += 1
+    if (flat_var.flatnessMemory[flat_var.flatnessCnt] > 0):  # If determined as flat
+        flat_var.flatnessCnt += 1
     flat_var.IsQpWithinFlat = isFlatnessInfoSent(pps, rc_var)
 
     if (supergroup_cnt == 0):
@@ -132,14 +132,14 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
 
         flat_var.prevFirstFlat = -1
         if (flat_var.prevWasFlat):
-            if ((flat_var.flanessCnt >= 1) and (flat_var.flatnessMemort[0] > 0)):
+            if ((flat_var.flatnessCnt >= 1) and (flat_var.flatnessMemort[0] > 0)):
                 flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
                 flat_var.prevFlatnessType = flat_var.flatnessMemory[0] - 1
 
         else:
             if (flat_var.flatnessCnt >= 1):
                 flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
-                flat_var.prevFlatnessType = flat_var.flatnessMemort[0] - 1
+                flat_var.prevFlatnessType = flat_var.flatnessMemory[0] - 1
 
     elif ((supergroup_cnt == 3) and (not flat_var.IsQpWithinFlat)):
         flat_var.prevFirstFlat = -1
@@ -152,10 +152,10 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
 
     if (hPos > (pps.slice_width - 1)):
         flat_var.origIsFlat = 1
-        flat_var.flanessType = 1
+        flat_var.flatnessType = 1
 
     if (flat_var.origIsFlat and (rc_var.masterQp < pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][1])):
-        if ((flat_var.flanessType == 0) or rc_var.masterQp < define.SOMEWHAT_FLAT_QP_DELTA):  # Somewhat flat
+        if ((flat_var.flatnessType == 0) or rc_var.masterQp < define.SOMEWHAT_FLAT_QP_DELTA):  # Somewhat flat
             rc_var.stQp = max(rc_var.stQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
             rc_var.prevQp = max(rc_var.prevQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
         else:  # very flat
@@ -604,8 +604,10 @@ def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
     :param recon_value
     :return:
     """
+    recon_value = recon_value.astype(np.int32)
     midrange = 1 << dsc_const.cpntBitDepth[cpnt]
     midrange = midrange / 2
+    #print(midrange)
     return (midrange + (recon_value % (1 << qlevel)))
 
 
@@ -615,6 +617,12 @@ def QuantizeResidual(err, qlevel):
     :param qlevel:
     :return:
     """
+    # print(type(err))
+    # print(err)
+    err = err.astype(np.int32)
+    # print(type(err))
+    # print(err)
+
     if err > 0:
         eq = (err + QuantOffset(qlevel)) >> qlevel
     else:
@@ -740,7 +748,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         err_raw_q = QuantizeResidual(err_raw, qlevel)  # quantized residual check
 
         pred_mid = FindMidpoint(dsc_const, cpnt, qlevel,
-                                currLine[cpnt][min(pps.sliceWidth - 1, hPos) + defines.PADDING_LEFT])
+                                currLine[cpnt][min(dsc_const.sliceWidth - 1, hPos) + defines.PADDING_LEFT])
         err_mid = actual_x - pred_mid
         err_mid_q = QuantizeResidual(err_mid, qlevel)  # MPP quantized residual check
 
@@ -786,7 +794,8 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         pred_var.maxError[unit] = max(pred_var.maxError[unit], absErr)
 
         ############# Reconstruct midpoint value  ##############
-        recon_mid = pred_mid + (pred_var.quantizedResidualMid[unit][sampModCnt] << qlevel)
+        #print(type(pred_var.quantizedResidualMid[unit][sampModCnt]))
+        recon_mid = pred_mid + ((pred_var.quantizedResidualMid[unit][sampModCnt]).astype(np.int32) << qlevel)
         recon_mid = CLAMP(recon_mid, 0, maxval)
 
         if (dsc_const.full_ich_err_precision):

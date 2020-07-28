@@ -1,5 +1,5 @@
 import numpy as np
-PRINT_DEBUG_OPT = True
+PRINT_DEBUG_OPT = 0
 
 class DSCFifo:
     def __init__(self, size):
@@ -17,6 +17,7 @@ class DSCFifo:
         return self
 
     def fifo_get_bits(self, n, sign_extend):
+        if PRINT_DEBUG_OPT : print("FIFO_GET_BITS HAS BEEN CALLED")
         d = 0
 
         if (self.fullness < n):
@@ -48,7 +49,7 @@ class DSCFifo:
         return d
 
     def fifo_put_bits(self, d, nbits):
-        if PRINT_DEBUG_OPT: print("LETS WRITE %d BITS INTO FIFO" %nbits)
+        if PRINT_DEBUG_OPT: print("LETS WRITE %d BITS INTO FIFO, Value is %d" %(nbits, d))
 
         if (d.bit_length() > nbits):
             raise ValueError("Input Bit length is larger than 'nbit'")

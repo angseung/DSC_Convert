@@ -135,7 +135,7 @@ class initDefines:
         self.PT_MAP = 0
         self.PT_LEFT = 1
         self.PT_BLOCK = 2
-        self.MAX_SE_SIZE = 4 * (pps.bits_per_component + 1)
+        self.MAX_SE_SIZE = 4 * pps.bits_per_component + 4
 
 class initDscConstants:
     def __init__(self, pps, defines):

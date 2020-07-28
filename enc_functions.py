@@ -1108,6 +1108,28 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     vlc_var.codedGroupSize = encoding_bits
 
+def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
+    ## Function to remove one pixel's worth of bits from the encoder buffer model
+    ## 6.8.1 section
+    ## "chunkPixelTimes" is hPos + dsc_cfg->initial_xmit_delay (=512)
+    ## "numBitsChunk" increases at 8 every pixel
+    ##
+
+    rc_var.bpgFracAccum += (pps.bits_per_pixel & 0xf)
+    rc_var.bufferFullness -= (pps.bits_per_pixel >> 4) + (rc_var.bpgFracAccum >> 4)
+    rc_var.numBitsChunk += (pps.bits_per_pixel >> 4) + (rc_var.bpgFracAccum >> 4)
+    rc_var.bpgFracAccum = rc_var.bpgFracAccum & 0xf
+    rc_var.chunkPixelTimes += 1
+
+    if (rc_var.chunkPixelTimes >= dsc_const.sliceWidth):
+        adjustment_bits = pps.chunk_size * 8 - rc_var.numBitsChunk
+        rc_var.bufferFullness -= adjustment_bits
+
+    rc_var.bpgFracAccum = 0
+    rc_var.numBitsChunk = 0
+    rc_var.chunkCount += 1
+    rc_var.chunkPixelTimes = 0
+
 
 def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
     for i in range(pps.numSsps):
@@ -1133,7 +1155,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
             max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
     ################################ Insert flat flag ####################################
-    if unit == 0 and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and flat_var.IsQpWithinFlat:
+    if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and (flat_var.IsQpWithinFlat)):
         if flat_var.prevFirstFlat < 0:
             addbits(vlc_var, FIFO, 0, 1)
         else:

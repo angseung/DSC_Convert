@@ -15,7 +15,7 @@ def putbits(val, size, buf):
 
     for i in range(size - 1, -1, -1):
         currbit = (val >> i) & 1
-        if (currbit == 0 or currbit == 1):
+        if (not (currbit == 0 or currbit == 1)):
             raise ValueError("Bit MUST BE bit 0 or bit 1")
 
         buf.data[buf.slice_index, buf.postMuxNumBits] = currbit

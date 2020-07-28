@@ -1042,13 +1042,13 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     # get prefix and encode each units
     ## Todo AddBits function
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
-            max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0])
+            max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
-            max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1])
+            max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1], ich_pfx)
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 2, groupCnt, add_prefix_one[2],
-            max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2])
+            max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2], ich_pfx)
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
-            max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3])
+            max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
 
     if vlc_var.ichSelected:
         encoding_bits = bits_ich_mode
@@ -1091,6 +1091,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
             prefix_size[0] += 3
             encoding_bits += 3
+
         else:
             prefix_size[0] += 2
             encoding_bits += 2
@@ -1130,7 +1131,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
 
 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFO):
+            max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
     ################################ Insert flat flag ####################################
     if unit == 0 and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and flat_var.IsQpWithinFlat:
         if flat_var.prevFirstFlat < 0:
@@ -1139,7 +1140,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
             addbits(vlc_var, FIFO, 1, 1)
 
     ################################ Insert flat type ####################################
-    if unit == 0 and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and flat_var.firstFlat >= 0:
+    if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
         if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
         addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
@@ -1148,10 +1149,12 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
     if vlc_var.ichSelected:
         #### ICH (unit == 0, prefix + suffix)
         if unit == 0: ## LUMA Unit
-            if vlc_var.prevIchSelected:
-                addbits()
+            if ich_var.prevIchSelected:
+                addbits(vlc_var, FIFO, 1, ich_pfx) ##
+
             else:
-                addbits()
+                addbits(vlc_var, FIFO, 0, ich_pfx) ##
+
             for i in range(dsc_const.pixelsInGroup):
                 if dsc_const.ichIndexUnitMap[i] == unit:
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
@@ -1164,12 +1167,14 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
     else:
         if add_prefix_one:
             addbits(vlc_var, FIFO, 1, prefix_size)
+
         else:
             addbits(vlc_var, FIFO, 0, prefix_size)
 
         for i in range(defines.SAMPLES_PER_UNIT):
             if max_size == maxResSize:
                 addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
+
             else:
                 addbits(vlc_var, FIFO, pred_var.quantizedResidual.item(unit, i), suffix_size)
 

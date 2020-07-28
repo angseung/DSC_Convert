@@ -1,5 +1,5 @@
 import numpy as np
-PRINT_DEBUG_OPT = False
+PRINT_DEBUG_OPT = True
 
 class DSCFifo:
     def __init__(self, size):
@@ -20,6 +20,8 @@ class DSCFifo:
         d = 0
 
         if (self.fullness < n):
+            if PRINT_DEBUG_OPT:
+                print("Fullness in Underflow Condition : %d when nbits is %d" %(self.fullness, n))
             raise ValueError("Fifo Underflow!")
 
         for i in range(n):
@@ -28,9 +30,9 @@ class DSCFifo:
             if (i == 0) : sign = b # 'b' is a sign bit
             d = (d << 1) + b
 
-            if PRINT_DEBUG_OPT:
-                print("b : ",b)
-                print("d : ",d)
+            # if PRINT_DEBUG_OPT:
+            #     print("b : ",b)
+            #     print("d : ",d)
 
             self.fullness -= 1
             self.read_ptr += 1
@@ -46,11 +48,15 @@ class DSCFifo:
         return d
 
     def fifo_put_bits(self, d, nbits):
+        if PRINT_DEBUG_OPT: print("LETS WRITE %d BITS INTO FIFO" %nbits)
 
         if (d.bit_length() > nbits):
             raise ValueError("Input Bit length is larger than 'nbit'")
 
         if (self.fullness + nbits > self.size):
+            if PRINT_DEBUG_OPT:
+                print("Fullness in Overflow Condition : %d when nbits is %d" %(self.fullness, nbits))
+                print("FIFO MAXSIZE IS %d" %(self.size))
             raise ValueError("Fifo Overflowed!")
 
         self.fullness += nbits
@@ -60,7 +66,7 @@ class DSCFifo:
 
         for i in range(nbits):
             b = (d >> (nbits - i - 1)) & 1
-            if PRINT_DEBUG_OPT: print(b)
+            # if PRINT_DEBUG_OPT: print(b)
 
             self.data[self.write_prt] = b
             self.write_prt += 1

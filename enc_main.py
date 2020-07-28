@@ -186,7 +186,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 done = 1
 
             # Mapping Reconstructed Value to Out Picture 'op'
-            op = currline_to_pic(op, vPos, pps, defines, pic_val, currLine)
+            op = currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine)
             # Fill tmp_prevLine outside of dsc_state->sliceWidth (PADDING_LEFT and PADDING_RIGHT)
             # for PADDING LEFT
             for mod_hPos in range(defines.PADDING_LEFT) :

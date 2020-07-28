@@ -7,10 +7,10 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 PRINT_DEBUG_OPT = True
 
 
-def currline_to_pic(op, vPos, pps, defines, pic_val, currLine):
+def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
     xs = pic_val.xs
     ## need to modify each axis
-    currLine_t = (currLine[defines.PADDING_LEFT:, :]).transpose([1, 0])
+    currLine_t = (currLine[0 : dsc_const.numComponents, 0 : defines.PADDING_LEFT]).transpose([1, 0])
     op[xs: xs + pps.slice_width, vPos, :] = currLine_t
 
     return op
@@ -617,7 +617,7 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     return qlevel
 
 
-def SamplePredict(defines, cpnt, hPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
+def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
                   qLevel, cpntBitDepth):
     # TODO h_offset_array_idx is equal to group count value
     # hPos = (0,1,2 -> 0) (3,4,5 -> 3) (6,7,8 -> 6) (9,10,11 -> 9)
@@ -634,8 +634,8 @@ def SamplePredict(defines, cpnt, hPos, prevLine, currLine, predType, sampModCnt,
     filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1])
     filt_d = FILT3(prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2])
 
-    ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than 1,917
-    if (h_offset_array_idx < 1918):
+    ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than (sliceWidth - 3)
+    if (h_offset_array_idx < (dsc_const.sliceWidth - 2)):
         filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
 
     else: filt_e = 0
@@ -705,7 +705,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
             ####### TODO native_420 mode
             raise NotImplementedError
         else:
-            pred_x = SamplePredict(defines, cpnt, hPos, prevLine, currLine, pred2use, sampModCnt,
+            pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, pred2use, sampModCnt,
                                    pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)

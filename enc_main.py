@@ -4,7 +4,7 @@ from enc_functions import *
 from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
 
-def dsc_encoder(pps, pic, op, buf):
+def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
     defines = initDefines(pps)
     dsc_const = initDscConstants(pps, defines)
@@ -58,7 +58,7 @@ def dsc_encoder(pps, pic, op, buf):
         #################### Get input line ###################
         if hPos == 0:
             ## Get input image when the first pixel of each line starts
-            origLine = PopulateOrigLine(vPos, pic)
+            origLine[0 : dsc_const.numComponents, 0 : - (defines.PADDING_LEFT)] = PopulateOrigLine(pps, hPos, vPos, pic)
 
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions
@@ -98,7 +98,8 @@ def dsc_encoder(pps, pic, op, buf):
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
         if (sampModCnt == 2) or (hPos == pps.slice_width - 1):
-            flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, currLine, flatQLevel)
+            #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
+            flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
             if (sampModCnt < 2):
                 if sampModCnt == 0 :
@@ -165,8 +166,24 @@ def dsc_encoder(pps, pic, op, buf):
             rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
             # End of Group processing
 
+        ################## Counter controller ############################
+        hPos += 1
+        sampModCnt += 1
+
+        ### RESET sampModCnt Value
+        if sampModCnt == 3 :
+            groupCnt += 1 # increases to the end of slice
+            sampModCnt = 0
+
         # End of line
         if (hPos >= pps.slice_width) :
+            # end of line processing
+
+            hPos = 0
+            vPos += 1
+
+            if vPos >= pps.slice_height:
+                done = 1
 
             # Mapping Reconstructed Value to Out Picture 'op'
             op = currline_to_pic(op, vPos, pps, defines, pic_val, currLine)
@@ -186,6 +203,7 @@ def dsc_encoder(pps, pic, op, buf):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+
                     else:
                         tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
@@ -194,22 +212,9 @@ def dsc_encoder(pps, pic, op, buf):
                 for i in range(lbufWidth) :
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         prevLine[cpnt + (vPos % 2)][i] = tmp_prevLine[cpnt + (vPos % 2)][i]
+
                     else :
                         prevLine[cpnt][i] = tmp_prevLine[cpnt][i]
-            # end of line processing
-
-        ################## Counter controller ############################
-        hPos += 1
-        sampModCnt += 1
-        if sampModCnt == 3 :
-            groupCnt += 1 # increases to the end of slice
-            sampModCnt = 0
-
-        if hPos >= pps.slice_width :
-            hPos = 0
-            vPos += 1
-            if vPos >= pps.slice_height:
-                done = 1
 
         # End of While (Encoding process)
 

@@ -4,6 +4,8 @@ from dsc_utils import *
 from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, initPredVariables, \
     initRcVariables, initVlcVariables
 
+PRINT_DEBUG_OPT = True
+
 
 def currline_to_pic(op, vPos, pps, defines, pic_val, currLine):
     xs = pic_val.xs
@@ -14,8 +16,10 @@ def currline_to_pic(op, vPos, pps, defines, pic_val, currLine):
     return op
 
 
-def PopulateOrigLine(vPos, pic):
-    return (pic[:, vPos, :]).transpose(1, 0)
+def PopulateOrigLine(pps, hPos, vPos, pic):
+    width = pps.slice_width
+
+    return (pic[hPos : hPos + width, vPos, :]).transpose(1, 0)
 
 
 def isFlatnessInfoSent(pps, rc_var):
@@ -24,7 +28,7 @@ def isFlatnessInfoSent(pps, rc_var):
     return is_flat_signaled
 
 
-def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel):
+def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel):
     fc1_start = 0
     fc1_end = 4
     fc2_start = 1
@@ -41,38 +45,16 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
 
     is_end_of_slice = ((hPos + 1) >= pps.slice_width)  # If group starts past the end of the slice, it can't be flat
 
-    for cpnt in range(define.NUM_COMPONENTS):
-        max_val = -1
-        min_val = 99999
-        #print(currLine.shape, cpnt)
-        for i in range(fc1_start, fc1_end):
-            pixel_val = currLine[cpnt, define.PADDING_LEFT + hPos + 1]
-
-            if max_val < pixel_val: max_val = pixel_val
-            if min_val > pixel_val: min_val = pixel_val
-
-        is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
-        is_veryflat_failed = (max_val - min_val) > vf_thresh
-
-        if not is_somewhatflat_falied:
-            t1_somewhat_flat = False
-
-        if not is_veryflat_failed:
-            t1_very_flat = False
-
-    is_check_skip = ((hPos + 2) >= pps.slice_width)  # Skip flatness check 2 if it only contains a single pixel
-    test2_condition = (not (t1_very_flat or t1_somewhat_flat))
-
-    # Left adjacent isn't flat, but current group & group to the right is flat
-    #### Flat Test 2
-    if (test2_condition):
-        for cpnt in range(define.NUM_COMPONENTS):
-            # vf_thresh = pps.flatness_det_thresh
+    if (not is_end_of_slice):
+        for cpnt in range(dsc_const.numComponents):
             max_val = -1
             min_val = 99999
+            #print(currLine.shape, cpnt)
 
-            for i in range(fc2_start, fc2_end):
-                pixel_val = currLine[cpnt, define.PADDING_LEFT + hPos + 1]
+            for i in range(fc1_start, fc1_end):
+                #if PRINT_DEBUG_OPT: print("CURRENT hPos is %d, i is %d" %(hPos, i))
+
+                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i]
 
                 if max_val < pixel_val: max_val = pixel_val
                 if min_val > pixel_val: min_val = pixel_val
@@ -81,10 +63,36 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
             is_veryflat_failed = (max_val - min_val) > vf_thresh
 
             if not is_somewhatflat_falied:
-                t2_somewhat_flat = False
+                t1_somewhat_flat = False
 
             if not is_veryflat_failed:
-                t2_very_flat = False
+                t1_very_flat = False
+
+        is_check_skip = ((hPos + 2) >= pps.slice_width)  # Skip flatness check 2 if it only contains a single pixel
+        test2_condition = (not (t1_very_flat or t1_somewhat_flat))
+
+        # Left adjacent isn't flat, but current group & group to the right is flat
+        #### Flat Test 2
+        if (test2_condition):
+            for cpnt in range(define.NUM_COMPONENTS):
+                # vf_thresh = pps.flatness_det_thresh
+                max_val = -1
+                min_val = 99999
+
+                for i in range(fc2_start, fc2_end):
+                    pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i]
+
+                    if max_val < pixel_val: max_val = pixel_val
+                    if min_val > pixel_val: min_val = pixel_val
+
+                is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
+                is_veryflat_failed = (max_val - min_val) > vf_thresh
+
+                if not is_somewhatflat_falied:
+                    t2_somewhat_flat = False
+
+                if not is_veryflat_failed:
+                    t2_very_flat = False
 
     if (is_end_of_slice or is_check_skip):
         flat_type_val = 0
@@ -103,7 +111,7 @@ def isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
 
 
 ########### TODO hPos is not accurate
-def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, currLine, flatQLevel):
+def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
     pixelsInGroup = 3
     supergroup_cnt = groupCount % define.GROUPS_PER_SUPERGROUP
     flatness_index = hPos + pixelsInGroup * define.GROUPS_PER_SUPERGROUP
@@ -111,9 +119,9 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
     if (supergroup_cnt == 0):
         flat_var.flatnessCnt = 0
 
-    flat_var.flatnessMemory[flat_var.flatnessCnt] = isOrigFlatHIndex(flatness_index, currLine, rc_var, define, dsc_const,
+    flat_var.flatnessMemory[flat_var.flatnessCnt] = isOrigFlatHIndex(flatness_index, origLine, rc_var, define, dsc_const,
                                                                     pps, flatQLevel)
-    flat_var.flatnessCurPos = isOrigFlatHIndex(hPos, currLine, rc_var, define, dsc_const, pps, flatQLevel)
+    flat_var.flatnessCurPos = isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
     flat_var.flatnessIdxMemory[flat_var.flatnessCnt] = supergroup_cnt
 
     if (flat_var.flatnessMemory[flat_var.flatnessCnt] > 0):  # If determined as flat
@@ -149,8 +157,7 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
         flat_var.origIsFlat = 1
 
     ## *MODEL NOTE* MN_FLAT_QP_ADJ
-
-    if (hPos > (pps.slice_width - 1)):
+    if (hPos >= (pps.slice_width - 1)):
         flat_var.origIsFlat = 1
         flat_var.flatnessType = 1
 
@@ -615,7 +622,7 @@ def SamplePredict(defines, cpnt, hPos, prevLine, currLine, predType, sampModCnt,
     # TODO h_offset_array_idx is equal to group count value
     # hPos = (0,1,2 -> 0) (3,4,5 -> 3) (6,7,8 -> 6) (9,10,11 -> 9)
     h_offset_array_idx = int(hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT + defines.PADDING_LEFT
-
+    #if PRINT_DEBUG_OPT: print("[cpnt : %d] Current [h_offset_array_idxis %d], [hPos is %d]" %(cpnt, h_offset_array_idx, hPos))
     # organize samples into variable array defined in dsc spec
     c = prevLine[cpnt, h_offset_array_idx - 1]
     b = prevLine[cpnt, h_offset_array_idx]
@@ -626,7 +633,12 @@ def SamplePredict(defines, cpnt, hPos, prevLine, currLine, predType, sampModCnt,
     filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2], prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx])
     filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1])
     filt_d = FILT3(prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2])
-    filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
+
+    ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than 1,917
+    if (h_offset_array_idx < 1918):
+        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
+
+    else: filt_e = 0
 
     if (predType == defines.PT_LEFT):  # Only at first line
         p = a

@@ -88,7 +88,7 @@ for ys in range(0, pps.pic_height, pps.slice_height):
             img = Image.fromarray(slice_picture, 'YCbCr')
             img.show()
 
-        dsc_encoder(pps, orig_pixel, output_pic, buf)
+        dsc_encoder(pps, orig_pixel, output_pic, buf, pic_val)
         buf.slice_index += 1 # Increase Slice index after one slice processed...
 
     ####### Write encoded dsc data to output file #######

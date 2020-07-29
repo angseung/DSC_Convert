@@ -635,10 +635,11 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
     filt_d = FILT3(prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2])
 
     ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than (sliceWidth - 3)
-    if (h_offset_array_idx < (dsc_const.sliceWidth - 2)):
-        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
+    if (h_offset_array_idx == (dsc_const.sliceWidth - 2)):
+        filt_e = 0
 
-    else: filt_e = 0
+    else:
+        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
 
     if (predType == defines.PT_LEFT):  # Only at first line
         p = a

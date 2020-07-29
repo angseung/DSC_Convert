@@ -172,18 +172,18 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         sampModCnt += 1
 
         ### RESET sampModCnt Value
-        if sampModCnt == 3 :
+        if (sampModCnt == 3):
             groupCnt += 1 # increases to the end of slice
             sampModCnt = 0
 
-        # End of line
+        ## End of line
         if (hPos >= pps.slice_width) :
             # end of line processing
 
             hPos = 0
             vPos += 1
 
-            if vPos >= pps.slice_height:
+            if (vPos >= pps.slice_height):
                 done = 1
 
             # Mapping Reconstructed Value to Out Picture 'op'

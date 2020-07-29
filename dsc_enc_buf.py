@@ -1,5 +1,6 @@
 import numpy as np
 from init_pps_params import initPps
+PRINT_DEBUG_OPT = False
 
 class DSCBuffer():
 
@@ -21,24 +22,37 @@ class DSCBuffer():
         return self
 
 
+## Write a .DSC formatted file
 def write_dsc_data(path, buf, pps):
     slices_per_line = int(pps.pic_width / pps.slice_width)
-    current_idx = np.zeros([slices_per_line, 1])
-    total_byte = 0
+    current_idx = np.zeros([slices_per_line, 1], dtype = np.int32)
+    # total_byte = 0
+    nbytes = pps.chunk_size
+    nbits = nbytes * 8 ## Buffer is an bool numpy array in python model...
+
     with open("path", "ab") as f:
         for sy in range(pps.slice_height):
-            for sx in range(pps.slice_width):
-                for i in range(0, pps.chunk_size * 8, 8):
+            for sx in range(slices_per_line):
+                ## Lets Consider in BIT ORDER!!
+                for i in range(0, nbits, 8):
 
                     val = 0
 
-                    for j in range(i + 8):
-                        bit = buf.data[sx, current_idx[sx, 1] + i + j]
+                    for j in range(i, i + 8):
+                        if (PRINT_DEBUG_OPT):
+                            tmp = (current_idx[sx, :] + i + j)
+                            print("WRITING VALUE : %x" % tmp)
+
+                        bit = buf.data[sx, current_idx[sx, :] + i + j]
                         val = (val << 1) + bit
 
+                    if (PRINT_DEBUG_OPT):
+                        print("WRITING VALUE : %x" %val)
                     f.write(val)
 
-            current_idx[sx] += pps.chunk_size
-            total_byte += pps.chunk_size
+                current_idx[sx] += nbytes
 
-    return total_byte
+    #         total_byte += pps.chunk_size
+    #
+    # return total_byte
+    return True

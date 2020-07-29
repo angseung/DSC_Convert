@@ -1319,10 +1319,10 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
     ich_prevline_start = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
     ich_prevline_end = defines.ICH_SIZE
 
-    if hPos == 0 and vPos == 0:
+    if ((hPos == 0) and (vPos == 0)):
         ich_var.origWithinQerr = 0  # First pixel in a slice is error
     else:
-        if (not pps.native_420 and vPos > 0) or (pps.native_420 and vPos > 1):
+        if (((not pps.native_420) and (vPos > 0)) or ((pps.native_420) and (vPos > 1))):
             # UL/U/UR always valid for non-first-lines
             for i in range(ich_prevline_start, ich_prevline_end):
                 ich_var.valid[i] = 1

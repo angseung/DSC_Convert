@@ -28,7 +28,9 @@ class DSCFifo:
         for i in range(n):
             b = int(self.data.item(self.read_ptr))
 
-            if (i == 0): sign = b # 'b' is a sign bit
+            if (i == 0):
+                sign = b # 'b' is a sign bit
+
             d = (d << 1) + b
 
             # if PRINT_DEBUG_OPT:

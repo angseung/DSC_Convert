@@ -486,7 +486,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
         rc_var.stQp = rc_var.prevQp
 
     elif cond1:  # overflow avoid condition
-        rc_var.stQp = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][0]  # cond1
+        rc_var.stQp = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1, 0]  # cond1
 
     rc_var.stQp = CLAMP(rc_var.stQp, min_QP, max_QP)
 
@@ -500,6 +500,8 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
     # masterQp update for next group
     rc_var.masterQp = rc_var.prevQp
+
+    print("RATE CONTROL FINISHED SUCCESSFULLY")
 
     # return rc_var.masterQp
 
@@ -710,13 +712,13 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
                                    pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)
-        actual_x = origLine[cpnt][hPos + defines.PADDING_LEFT]
+        actual_x = origLine[cpnt, hPos + defines.PADDING_LEFT]
 
         err_raw = actual_x - pred_x  # get Quantized Residual
         err_raw_q = QuantizeResidual(err_raw, qlevel)  # quantized residual check
 
         pred_mid = FindMidpoint(dsc_const, cpnt, qlevel,
-                                currLine[cpnt][min(dsc_const.sliceWidth - 1, hPos) + defines.PADDING_LEFT])
+                                currLine[cpnt, min(dsc_const.sliceWidth - 1, hPos) + defines.PADDING_LEFT])
         err_mid = actual_x - pred_mid
         err_mid_q = QuantizeResidual(err_mid, qlevel)  # MPP quantized residual check
 
@@ -735,8 +737,8 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
                 err_mid_q = -1 * 2 ** (max_residual_bit - 1)
 
         ######### Save quantizedResidual #######
-        pred_var.quantizedResidual[unit][sampModCnt] = err_raw_q
-        pred_var.quantizedResidualMid[unit][sampModCnt] = err_mid_q
+        pred_var.quantizedResidual[unit, sampModCnt] = err_raw_q
+        pred_var.quantizedResidualMid[unit, sampModCnt] = err_mid_q
 
         if sampModCnt == 0:
             pred_var.max_size[unit] = err_raw_size
@@ -764,7 +766,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         ############# Reconstruct midpoint value  ##############
         #print(type(pred_var.quantizedResidualMid[unit][sampModCnt]))
-        recon_mid = pred_mid + ((pred_var.quantizedResidualMid[unit][sampModCnt]).astype(np.int32) << qlevel)
+        recon_mid = pred_mid + ((pred_var.quantizedResidualMid[unit, sampModCnt]).astype(np.int32) << qlevel)
         recon_mid = CLAMP(recon_mid, 0, maxval)
 
         if (dsc_const.full_ich_err_precision):
@@ -772,12 +774,12 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         else:
             absErr = abs(actual_x - recon_mid) >> (pps.bits_per_component - 8)
         ######### Save mid recon error #######
-        pred_var.midpointRecon[unit][sampModCnt] = recon_mid
+        pred_var.midpointRecon[unit, sampModCnt] = recon_mid
         pred_var.maxMidError[unit] = max(pred_var.maxMidError[unit], absErr)
 
         #######################################################################
         #############################  Final output ###########################
-        currLine[cpnt][hPos + defines.PADDING_LEFT] = recon_x
+        currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
 
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)
@@ -801,28 +803,29 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
     if hPos == 0:
         pred_var.bpCount = 0  ## TODO new variable
         pred_var.lastEdgeCount = 10  # Arbitrary large value as initial condition  ## TODO new variable
-        for i in range(dsc_const.numComponents):
-            for j in range(defines.BP_SIZE):
-                for candidate_vector in range(defines.BP_SIZE):
-                    # lastErr[NUM_COMPONENTS][BP_SIZE][BP_RANGE]
-                    # 3-pixel SAD's for each of the past 3 3-pixel-wide prediction blocks for each BP offset
-                    pred_var.lastErr[i][j][candidate_vector] = 0  ## TODO new variable
+        pred_var.lastErr[:, :, :] = 0
+        # for i in range(dsc_const.numComponents):
+        #     for j in range(defines.BP_SIZE):
+        #         for candidate_vector in range(defines.BP_SIZE):
+        #             # lastErr[NUM_COMPONENTS][BP_SIZE][BP_RANGE]
+        #             # 3-pixel SAD's for each of the past 3 3-pixel-wide prediction blocks for each BP offset
+        #             pred_var.lastErr[i][j][candidate_vector] = 0  ## TODO new variable
 
     if pixel_mod_cnt == 0:
         for candidate_vector in range(defines.BP_RANGE):
             # predErr is summed over PRED_BLK_SIZE pixels
-            pred_var.predErr[cpnt][candidate_vector] = 0
+            pred_var.predErr[cpnt, candidate_vector] = 0
 
     ################ Does edge detected? detection process ###############
     ### TODO Executed every pixel-level
-    recon_x = currLine[cpnt][hPos + defines.PADDING_LEFT]
+    recon_x = currLine[cpnt, hPos + defines.PADDING_LEFT]
 
     if hPos == 0:
         # midpoint pixel value
         prev_recon_x = ref_value
     else:
         # CurrentSample - LeftSample
-        prev_recon_x = currLine[cpnt][hPos + defines.PADDING_LEFT - 1]
+        prev_recon_x = currLine[cpnt, hPos + defines.PADDING_LEFT - 1]
 
     pixdiff = abs(recon_x - prev_recon_x)
 
@@ -845,14 +848,14 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
 
         if hPos > candidate_vector:
             # currLine[-1] ~ currLine[-13]
-            pred_x = currLine[cpnt][max(hPos + defines.PADDING_LEFT - 1 - candidate_vector, 0)]
+            pred_x = currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - candidate_vector, 0)]
         else:
             pred_x = ref_value
 
         pixdiff = abs(recon_x - pred_x)
         modified_abs_diff = min(pixdiff >> (dsc_const.cpntBitDepth[cpnt] - 7), 0x3f)  # 6-bits
         # predErr is 8-bits
-        pred_var.predErr[cpnt][candidate_vector] += modified_abs_diff
+        pred_var.predErr[cpnt, candidate_vector] += modified_abs_diff
 
     ################ Select minimum SAD among [candidate_vector] ###############
     ### Last pixel in a group
@@ -924,7 +927,7 @@ def IsForceMpp(pps, dsc_const, rc_var):
 
 
 def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf_var, groupCnt,
-             FIFOs, seSizeFIFOs, mapQLevel, maxResSize, adj_predicted_size):
+             FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size):
     ######################### Declare variables #########################
     start_fullness = np.zeros(dsc_const.numSsps, ).astype(np.int32)
     max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -935,7 +938,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     add_prefix_one = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
     #########################  Set control varaibles #########################
-    if pps.bits_per_pixel == 16 and 3 * mapQLevel[0] <= 3 - adj_predicted_size[0]:
+    if ((pps.bits_per_pixel == 0) and (3 * mapQLevel[0] <= 3 - adj_predicted_size[0])):
         ich_disallow = 1  # No ICH allowed for special case
 
     else:
@@ -955,7 +958,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             max_err_p_mode[unit] = pred_var.maxMidError[unit]
 
             for i in range(defines.SAMPLES_PER_UNIT):
-                req_size[unit][i] = maxResSize[unit]
+                req_size[unit, i] = maxResSize[unit]
 
         else:
             vlc_var.midpointSelected[unit] = 0
@@ -963,7 +966,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             max_err_p_mode[unit] = pred_var.maxError[unit]
 
             for i in range(defines.SAMPLES_PER_UNIT):
-                req_size[unit][i] = pred_var.quantizedResidualSize[unit][i]
+                req_size[unit, i] = pred_var.quantizedResidualSize[unit, i]
 
     #########################################################################
     ############# Determines prefix and suffix size for P-mode ##############
@@ -1078,6 +1081,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         vlc_var.rcSizeUnit[1] = 0
         vlc_var.rcSizeUnit[2] = 0
         vlc_var.rcSizeUnit[3] = 0
+
     else:
         encoding_bits = bits_p_mode
         suffix_size[0] *= defines.SAMPLES_PER_UNIT
@@ -1091,17 +1095,17 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         vlc_var.rcSizeUnit[3] = max_size[3] * defines.SAMPLES_PER_UNIT + 1
 
         # Predict size for next unit for this component ((required_size[0]+required_size[1]+2*required_size[2])/4)
-        vlc_var.predictedSize[0] = (2 + req_size[0][0] + req_size[0][1] + 2 * req_size[0][2]) >> 2
-        vlc_var.predictedSize[1] = (2 + req_size[1][0] + req_size[1][1] + 2 * req_size[1][2]) >> 2
-        vlc_var.predictedSize[2] = (2 + req_size[2][0] + req_size[2][1] + 2 * req_size[2][2]) >> 2
-        vlc_var.predictedSize[3] = (2 + req_size[3][0] + req_size[3][1] + 2 * req_size[3][2]) >> 2
+        vlc_var.predictedSize[0] = (2 + req_size[0, 0] + req_size[0, 1] + 2 * req_size[0, 2]) >> 2
+        vlc_var.predictedSize[1] = (2 + req_size[1, 0] + req_size[1, 1] + 2 * req_size[1, 2]) >> 2
+        vlc_var.predictedSize[2] = (2 + req_size[2, 0] + req_size[2, 1] + 2 * req_size[2, 2]) >> 2
+        vlc_var.predictedSize[3] = (2 + req_size[3, 0] + req_size[3, 1] + 2 * req_size[3, 2]) >> 2
 
-    if groupCnt % defines.GROUPS_PER_SUPERGROUP == 3 and flat_var.IsQpWithinFlat:
+    if ((groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and (flat_var.IsQpWithinFlat)):
         prefix_size[0] += 1
         encoding_bits += 1
 
-    if groupCnt % defines.GROUPS_PER_SUPERGROUP == 0 and flat_var.firstFlat >= 0:
-        if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
+    if ((groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
+        if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             prefix_size[0] += 3
             encoding_bits += 3
 
@@ -1113,13 +1117,15 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         seSizeFIFOs[i].fifo_put_bits(prefix_size.item(i) + suffix_size.item(i), 8)
         #fifo_put_bits(seSizeFIFOs[i], prefix_size[i] + suffix_size[i])
 
-        if prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]:
+        if (FIFOs[i].fullness - start_fullness[i] > dsc_const.maxSeSize[i]):
+        # if (prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]):
             print("SE Size FIFO too small")
 
-    if (groupCnt > pps.muxWordSize + defines.MAX_SE_SIZE - 3):
-        ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs)
+    if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
+        ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifters)
 
     vlc_var.codedGroupSize = encoding_bits
+
 
 def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     ## Function to remove one pixel's worth of bits from the encoder buffer model
@@ -1144,46 +1150,57 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     rc_var.chunkPixelTimes = 0
 
 
-def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs):
+def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifters):
     for i in range(pps.numSsps):
-        if vlc_var.shifterCnt[i] < dsc_const.maxSeSize[i]:
+
+        if (Shifters[i].fullness < dsc_const.maxSeSize[i]):
+
             for j in range(int(pps.muxWordSize / 8)):
                 sz = FIFOs[i].fullness
-                if sz >= 8:
+
+                if (sz >= 8):
                     #d = fifo_get_bits(FIFOs[i], 8, 0)
                     d = FIFOs[i].fifo_get_bits(8, 0)
-                elif 0 < sz < 8:
+
+                elif (0 < sz < 8):
                     #d = fifo_get_bits(FIFOs[i], sz, 0) << (8 - sz)
                     d = int(FIFOs[i].fifo_get_bits(sz, 0)) << (8 - sz)
+
                 else:
                     d = 0
+
                 ##### Print out encoded data #####
                 # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
                 putbits(d, 8, buf_var)
+
         #sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
         sz = seSizeFIFOs[i].fifo_get_bits(8, 0)
-        vlc_var.shifterCnt[i] -= sz
+        Shifters[i].fifo_get_bits(sz, 0)
 
 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
             max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
     ################################ Insert flat flag ####################################
-    if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 3) and (flat_var.IsQpWithinFlat)):
-        if flat_var.prevFirstFlat < 0:
+    if ((unit == 0) and ((groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3) and (flat_var.IsQpWithinFlat)):
+
+        if (flat_var.prevFirstFlat < 0):
             addbits(vlc_var, FIFO, 0, 1)
+
         else:
             addbits(vlc_var, FIFO, 1, 1)
 
     ################################ Insert flat type ####################################
     if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
+
         if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
         addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
 
     ################################ ICH mode ####################################
-    if vlc_var.ichSelected:
+    if (vlc_var.ichSelected):
         #### ICH (unit == 0, prefix + suffix)
-        if unit == 0: ## LUMA Unit
+        if (unit == 0): ## LUMA Unit
+
             if ich_var.prevIchSelected:
                 addbits(vlc_var, FIFO, 1, ich_pfx) ##
 
@@ -1191,15 +1208,19 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
                 addbits(vlc_var, FIFO, 0, ich_pfx) ##
 
             for i in range(dsc_const.pixelsInGroup):
-                if dsc_const.ichIndexUnitMap[i] == unit:
+
+                if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
         #### ICH Lookup (unit > 0, suffix)
         else:
+
             for i in range(dsc_const.pixelsInGroup):
-                if dsc_const.ichIndexUnitMap[i] == unit:
+
+                if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
 
     else:
+
         if add_prefix_one:
             addbits(vlc_var, FIFO, 1, prefix_size)
 
@@ -1207,6 +1228,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
             addbits(vlc_var, FIFO, 0, prefix_size)
 
         for i in range(defines.SAMPLES_PER_UNIT):
+
             if max_size == maxResSize:
                 addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
 
@@ -1248,13 +1270,13 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
     p = np.zeros(defines.NUM_COMPONENTS, )
 
     for i in range(dsc_const.pixelsInGroup):
-        p[0] = ich_var.ichPixels[i][0]
-        p[1] = ich_var.ichPixels[i][1]
-        p[2] = ich_var.ichPixels[i][2]
-        p[3] = ich_var.ichPixels[i][3]
+        p[0] = ich_var.ichPixels[i, 0]
+        p[1] = ich_var.ichPixels[i, 1]
+        p[2] = ich_var.ichPixels[i, 2]
+        p[3] = ich_var.ichPixels[i, 3]
 
         for cpnt in range(dsc_const.numComponents):
-            currLine[cpnt][mod_hPos + i + defines.PADDING_LEFT] = p[cpnt]
+            currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT] = p[cpnt]
 
 
 def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
@@ -1263,7 +1285,7 @@ def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
         if mod_hPos + i <= pps.slice_width - 1:
             for unit in range(dsc_const.unitsPerGroup):
                 if (vlc_var.midpointSelected[unit]):
-                    currLine[unit][mod_hPos + defines.PADDING_LEFT + i] = pred_var.midpointRecon[unit][i]
+                    currLine[unit, mod_hPos + defines.PADDING_LEFT + i] = pred_var.midpointRecon[unit, i]
 
 
 def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first_line_flag, is_odd_line):
@@ -1362,10 +1384,10 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
 
                 if lowest_sad > weighted_sad:
                     lowest_sad = weighted_sad
-                    ich_var.ichPixels[sampModCnt][0] = ich_pixel[0]
-                    ich_var.ichPixels[sampModCnt][1] = ich_pixel[1]
-                    ich_var.ichPixels[sampModCnt][2] = ich_pixel[2]
-                    ich_var.ichPixels[sampModCnt][3] = ich_pixel[3]
+                    ich_var.ichPixels[sampModCnt, 0] = ich_pixel[0]
+                    ich_var.ichPixels[sampModCnt, 1] = ich_pixel[1]
+                    ich_var.ichPixels[sampModCnt, 2] = ich_pixel[2]
+                    ich_var.ichPixels[sampModCnt, 3] = ich_pixel[3]
                     ich_var.ichLookup[sampModCnt] = j
 
         # debugging
@@ -1377,9 +1399,9 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
             # Y -> Co -> Cg -> (Y2)
             for i in range(dsc_const.unitsPerGroup):
                 if dsc_const.full_ich_err_precision:
-                    absErr = abs(ich_var.ichPixels[sampModCnt][i] - orig[i])
+                    absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i])
                 else:
-                    absErr = abs(ich_var.ichPixels[sampModCnt][i] - orig[i]) >> (pps.bits_per_component - 8)
+                    absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i]) >> (pps.bits_per_component - 8)
                 ich_var.maxIchError[i] = max(ich_var.maxIchError[i], absErr)
         else:
             ich_var.origWithinQerr = 0
@@ -1422,7 +1444,7 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
         ich_var.valid[loc] = 1
 
         # Insert the most recently reconstructed pixel into MRU
-        ich_var.pixels[cpnt][0] = recon[cpnt]
+        ich_var.pixels[cpnt, 0] = recon[cpnt]
         ich_var.valid[0] = 1
 
 

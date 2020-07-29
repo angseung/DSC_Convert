@@ -67,7 +67,8 @@ class initVlcVariables:
         self.predictedSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.midpointSelected = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.forceMpp = 0
-        self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
+        #self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
+        ## REMOVED IN 2020.07.29 DEBUG #12
 
 class initRcVariables:
     def __init__(self):
@@ -197,10 +198,10 @@ class initDscConstants:
         if pps.bits_per_component == 16:
             self.maxSeSize[0] = self.maxSeSize[1] = self.maxSeSize[2] = self.maxSeSize[3] = 64
         else:
-            self.maxSeSize[0] = pps.bits_per_component * 4 + 4
+            self.maxSeSize[0] = (pps.bits_per_component * 4) + 4
             self.maxSeSize[1] = (pps.bits_per_component + pps.convert_rgb) * 4
-            self.maxSeSize[2] = (pps.bits_per_component + pps.convert_rgb)  * 4
-            self.maxSeSize[3] = (pps.bits_per_component + pps.convert_rgb)  * 4
+            self.maxSeSize[2] = (pps.bits_per_component + pps.convert_rgb) * 4
+            self.maxSeSize[3] = (pps.bits_per_component)  * 4
 
 
 

@@ -24,6 +24,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     #fifo_size = int(((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE + 7)) / 8) * 8
     fifo_size = int(((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) + 7) / 8) * 8
     seSizefifo_size = int((8 * (pps.muxWordSize + defines.MAX_SE_SIZE - 1) + 7) / 8) * 8
+    shifter_size = int((pps.muxWordSize + defines.MAX_SE_SIZE + 7) / 8) * 8
 
     FIFO_Y = DSCFifo(fifo_size)
     FIFO_Co = DSCFifo(fifo_size)
@@ -36,6 +37,12 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     seSizeFifo_Cg = DSCFifo(seSizefifo_size)
     seSizeFifo_Y2 = DSCFifo(seSizefifo_size)
     seSizeFIFOs = [seSizeFifo_Y, seSizeFifo_Co, seSizeFifo_Cg, seSizeFifo_Y2]
+
+    Shifter_Y = DSCFifo(shifter_size)
+    Shifter_Co = DSCFifo(shifter_size)
+    Shifter_Cg = DSCFifo(shifter_size)
+    Shifter_Y2 = DSCFifo(shifter_size)
+    Shifters = [Shifter_Y, Shifter_Co, Shifter_Cg, Shifter_Y2]
 
     oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -116,7 +123,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             # VLCGroup()
 
             VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
-                     FIFOs, seSizeFIFOs, mapQLevel, maxResSize, adj_predicted_size)
+                     FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
 
             bufferFullness = 0
             bufferFullness += vlc_var.codedGroupSize
@@ -139,7 +146,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 ich_p = np.zeros(defines.NUM_COMPONENTS, )
                 for i in range(dsc_const.pixelsInGroup):
                     for cpnt in range(dsc_const.numComponents):
-                        ich_p[cpnt] = currLine[cpnt][mod_hPos + i + defines.PADDING_LEFT]
+                        ich_p[cpnt] = currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT]
                     UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, ich_p)
 
             ########### Predict MMAP vs BP for the next line ############
@@ -151,10 +158,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             for mod_hPos in range(hPos - 2 + defines.PADDING_LEFT, hPos + 1 + defines.PADDING_LEFT):
                 for cpnt in range(dsc_const.numComponents):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
-                        tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
                     else:
-                        tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
             ################################## Rate controller  #############################
@@ -177,7 +184,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             groupCnt += 1 # increases to the end of slice
             sampModCnt = 0
 
-        ## End of line
+        ## End of a line
         if (hPos >= pps.slice_width):
             # end of line processing
 
@@ -194,30 +201,39 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             for mod_hPos in range(defines.PADDING_LEFT):
                 for cpnt in range(dsc_const.numComponents):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
-                        tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
                     else:
-                        tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
             # for PADDING RIGHT
             for mod_hPos in range(defines.PADDING_LEFT + pps.slice_width, lbufWidth):
                 for cpnt in range(dsc_const.numComponents):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
-                        tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
                     else:
-                        tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
+                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
             # Deliver the value from "tmp_prevLine" to "prevLine"
             for cpnt in range(dsc_const.numComponents):
                 for i in range(lbufWidth):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
-                        prevLine[cpnt + (vPos % 2)][i] = tmp_prevLine[cpnt + (vPos % 2)][i]
+                        prevLine[cpnt + (vPos % 2), i] = tmp_prevLine[cpnt + (vPos % 2), i]
 
                     else:
-                        prevLine[cpnt][i] = tmp_prevLine[cpnt][i]
+                        prevLine[cpnt, i] = tmp_prevLine[cpnt, i]
 
+    ## while Done!
+
+    if (not (sampModCnt == 0)): ## Pad last unit wih 0's if needed
+        pred_var.quantizedResidualSize[:, :] = 0
+        VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
+                 FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
+
+    while (seSizeFifo[0].fullness > 0):
+        ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifters)
         # End of While (Encoding process)
 
     #######################################################################

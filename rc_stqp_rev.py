@@ -358,26 +358,26 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, fl
 
 
 def FindResidualSize(eq):
-    if (eq == 0) : size_e = 0
-    elif (-1 <= eq <= 0) : size_e = 1
-    elif (-2 <= eq <= 1) : size_e = 2
-    elif (-4 <= eq <= 3) : size_e = 3
-    elif (-8 <= eq <= 7) : size_e = 4
-    elif (-16 <= eq <= 15) : size_e = 5
-    elif (-32 <= eq <= 31) : size_e = 6
-    elif (-64 <= eq <= 63) : size_e = 7
-    elif (-128 <= eq <= 127) : size_e = 8
-    elif (-256 <= eq <= 255) : size_e = 9
-    elif (-512 <= eq <= 511) : size_e = 10
-    elif (-1024 <= eq <= 1023) : size_e = 11
-    elif (-2048 <= eq <= 2047) : size_e = 12
-    elif (-4096 <= eq <= 4095) : size_e = 13
-    elif (-8192 <= eq <= 8191) : size_e = 14
-    elif (-16384 <= eq <= 16383) : size_e = 15
-    elif (-32768 <= eq <= 32767) : size_e = 16
-    elif (-65536 <= eq <= 65535) : size_e = 17
-    elif (-131702 <= eq <= 131701) : size_e = 18
-    else :
+    if (eq == 0): size_e = 0
+    elif (-1 <= eq <= 0): size_e = 1
+    elif (-2 <= eq <= 1): size_e = 2
+    elif (-4 <= eq <= 3): size_e = 3
+    elif (-8 <= eq <= 7): size_e = 4
+    elif (-16 <= eq <= 15): size_e = 5
+    elif (-32 <= eq <= 31): size_e = 6
+    elif (-64 <= eq <= 63): size_e = 7
+    elif (-128 <= eq <= 127): size_e = 8
+    elif (-256 <= eq <= 255): size_e = 9
+    elif (-512 <= eq <= 511): size_e = 10
+    elif (-1024 <= eq <= 1023): size_e = 11
+    elif (-2048 <= eq <= 2047): size_e = 12
+    elif (-4096 <= eq <= 4095): size_e = 13
+    elif (-8192 <= eq <= 8191): size_e = 14
+    elif (-16384 <= eq <= 16383): size_e = 15
+    elif (-32768 <= eq <= 32767): size_e = 16
+    elif (-65536 <= eq <= 65535): size_e = 17
+    elif (-131702 <= eq <= 131701): size_e = 18
+    else:
         print("unexpectedly large residual size")
         raise ValueError
     return size_e

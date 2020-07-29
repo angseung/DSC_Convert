@@ -88,7 +88,7 @@ def bin_shift(int_num, shift_dir = 'right', shift_len = 0):
     return value
 
 
-def ceil_log2(val) :
+def ceil_log2(val):
     ret = 0
     x = val
     while (x):
@@ -97,15 +97,15 @@ def ceil_log2(val) :
     return ret
 
 
-def FILT3(a,b,c) :
+def FILT3(a,b,c):
     return (a + 2 * b + c + 2) / 2
 
 def CLAMP(X, MIN, MAX):
-    if X > MAX :
+    if X > MAX:
         return MAX
-    elif X < MIN :
+    elif X < MIN:
         return MIN
-    else :
+    else:
         return X
 
 def QuantDivisor(a):

@@ -122,7 +122,7 @@ def parse_pps(path = "w1.dsc", PRINT_PPS_OPT = False):
 
         PPS.RESERVED = int.from_bytes(f.read(34), byteorder = 'big', signed = 0)
 
-    if PRINT_PPS_OPT :
+    if PRINT_PPS_OPT:
         for key, val in PPS.items():
             print("PPS : %s, Value : " %key, val)
 

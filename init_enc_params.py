@@ -125,9 +125,9 @@ class initDefines:
         self.SOMEWHAT_FLAT_QP_THRESH = pps.somewhat_flat_qp_thresh
         self.SOMEWHAT_FLAT_QP_DELTA =  pps.somewhat_flat_qp_delta
         self.VERY_FLAT_QP = 1 + (2 * (pps.bits_per_component - 8))
-        if pps.native_422 :
+        if pps.native_422:
             self.OVERFLOW_AVOID_THRESHOLD = -224
-        else :
+        else:
             self.OVERFLOW_AVOID_THRESHOLD = -172
 
         self.LARGE_INT = 			  1 << 30
@@ -154,33 +154,33 @@ class initDscConstants:
         elif pps.bits_per_pixel >> 4 == 0:
             self.quantTableLuma = qlevel_luma_16bpc
             self.quantTableChroma = qlevel_chroma_16bpc
-        else : # Error
+        else: # Error
             raise NotImplementedError
 
         self.full_ich_err_precision = 0 ## TODO check the variable
 
-        if pps.native_420 or pps.native_422 :
+        if pps.native_420 or pps.native_422:
             self.sliceWidth = int(pps.slice_width / 2)
-        else :
+        else:
             self.sliceWidth = int(pps.slice_width)
 
         self.pixelsInGroup = 3
 
         self.ichIndexUnitMap = np.zeros(defines.MAX_PIXELS_PER_GROUP, )
-        for i in range(defines.MAX_PIXELS_PER_GROUP) :
-            if (pps.native_422) :
+        for i in range(defines.MAX_PIXELS_PER_GROUP):
+            if (pps.native_422):
                 self.ichIndexUnitMap[0] = 3 # put first ICH index with 2nd luma unit
                 self.ichIndexUnitMap[1] = 1
                 self.ichIndexUnitMap[2] = 2
                 self.ichIndexUnitMap[3] = 0
-            else :
+            else:
                 self.ichIndexUnitMap[i] = i % 3
 
-        if pps.native_422 :
+        if pps.native_422:
             self.unitsPerGroup = 4
             self.numSsps = 4
             self.numComponents = 4
-        else :
+        else:
             self.unitsPerGroup = 3
             self.numSsps = 3
             self.numComponents = 3
@@ -194,7 +194,7 @@ class initDscConstants:
                 self.cpntBitDepth[i] += 1
                 # range_[i] *= 2
         self.maxSeSize = np.zeros(4)
-        if pps.bits_per_component == 16 :
+        if pps.bits_per_component == 16:
             self.maxSeSize[0] = self.maxSeSize[1] = self.maxSeSize[2] = self.maxSeSize[3] = 64
         else:
             self.maxSeSize[0] = pps.bits_per_component * 4 + 4

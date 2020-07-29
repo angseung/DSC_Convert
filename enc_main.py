@@ -54,7 +54,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
     ###########################################################
     ######################## Main Loop ########################
-    while (not done) :
+    while (not done):
         print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if hPos == 0:
@@ -79,7 +79,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 adj_predicted_size[i] = CLAMP(pred_size, 0, maxResSize[i] - 1)
 
             ## Reset valid control of ICH
-            if (hPos == 0) and ((vPos == 0) or (pps.slice_width != pps.pic_width)) :
+            if ((hPos == 0) and ((vPos == 0) or (pps.slice_width != pps.pic_width))):
                 for idx in range(defines.ICH_SIZE):
                     ich_var.valid[idx] = 0
 
@@ -98,16 +98,17 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         #####################################################################
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
-        if (sampModCnt == 2) or (hPos == pps.slice_width - 1):
+        if ((sampModCnt == 2) or (hPos == pps.slice_width - 1)):
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
             flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
             if (sampModCnt < 2):
-                if sampModCnt == 0 :
+                if (sampModCnt == 0):
                     ich_var.ichLookup[1] = ich_var.ichLookup[0]
                     ich_var.ichLookup[2] = ich_var.ichLookup[0]
                     hPos += 2
-                if sampModCnt == 1 :
+
+                if (sampModCnt == 1):
                     ich_var.ichLookup[2] = ich_var.ichLookup[1]
                     hPos += 1
 
@@ -119,7 +120,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             bufferFullness = 0
             bufferFullness += vlc_var.codedGroupSize
-            if (bufferFullness > pps.rcb_bits) :
+            if (bufferFullness > pps.rcb_bits):
                 ## This check may actually belong after tgt_bpg has been subtracted
                 print("The buffer model has overflowed.  This probably occurred due to an error in the")
                 print("rate control parameter programming.\n")
@@ -133,17 +134,17 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)
 
             ########### Update ICH pixels ############
-            if defines.ICH_BITS != 0 and hPos < pps.slice_width - 1 :
+            if ((defines.ICH_BITS != 0) and (hPos < (pps.slice_width - 1))):
                 mod_hPos = hPos - 2
                 ich_p = np.zeros(defines.NUM_COMPONENTS, )
-                for i in range(dsc_const.pixelsInGroup) :
-                    for cpnt in range(dsc_const.numComponents) :
+                for i in range(dsc_const.pixelsInGroup):
+                    for cpnt in range(dsc_const.numComponents):
                         ich_p[cpnt] = currLine[cpnt][mod_hPos + i + defines.PADDING_LEFT]
                     UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, ich_p)
 
             ########### Predict MMAP vs BP for the next line ############
-            for mod_hPos in range(hPos-2, hPos + 1) :
-                for cpnt in range(dsc_const.numComponents) :
+            for mod_hPos in range(hPos - 2, hPos + 1):
+                for cpnt in range(dsc_const.numComponents):
                     BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos)
 
             ########### Store reconstructed value in prevLineBuf (double buffer) ############
@@ -177,7 +178,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             sampModCnt = 0
 
         ## End of line
-        if (hPos >= pps.slice_width) :
+        if (hPos >= pps.slice_width):
             # end of line processing
 
             hPos = 0
@@ -190,8 +191,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             op = currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine)
             # Fill tmp_prevLine outside of dsc_state->sliceWidth (PADDING_LEFT and PADDING_RIGHT)
             # for PADDING LEFT
-            for mod_hPos in range(defines.PADDING_LEFT) :
-                for cpnt in range(dsc_const.numComponents) :
+            for mod_hPos in range(defines.PADDING_LEFT):
+                for cpnt in range(dsc_const.numComponents):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])

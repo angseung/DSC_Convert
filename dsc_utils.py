@@ -45,7 +45,6 @@ def getbits(size, buf, sign):
     return outval
 
 
-
 # b_num = '0bxxxxx' format
 # returns integer format from binary format
 def bin2dec(b_num):

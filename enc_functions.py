@@ -501,7 +501,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     # masterQp update for next group
     rc_var.masterQp = rc_var.prevQp
 
-    print("RATE CONTROL FINISHED SUCCESSFULLY")
+    # print("RATE CONTROL FINISHED SUCCESSFULLY")
 
     # return rc_var.masterQp
 

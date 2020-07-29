@@ -1169,10 +1169,15 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters):
                 else:
                     d = 0
 
-                ##### Print out encoded data #####
-                # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
-                ##putbits(d, 8, buf_var)
-                Shifters[i].fifo_put_bits(d, 8)
+                if (isinstance(d, int)): ## Check "d" is a python integer or numpy integer...
+                    ##### Print out encoded data #####
+                    # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
+                    ##putbits(d, 8, buf_var)
+                    Shifters[i].fifo_put_bits(d, 8)
+
+                else: ##TODO
+                    d = d.item()
+                    Shifters[i].fifo_put_bits(d, 8)
 
         #sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
         sz = seSizeFIFOs[i].fifo_get_bits(8, 0)

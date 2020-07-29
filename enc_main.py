@@ -238,6 +238,12 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
     #######################################################################
 
+    ## Erase FIFO data...
+    for i in range(defines.MAX_NUM_SSPS):
+        seSizeFIFOs[i].fifo_free()
+        FIFOs[i].fifo_free()
+        Shifters[i].fifo_free()
+
 
 
 

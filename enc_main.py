@@ -55,6 +55,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done) :
+        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if hPos == 0:
             ## Get input image when the first pixel of each line starts
@@ -191,10 +192,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             # for PADDING LEFT
             for mod_hPos in range(defines.PADDING_LEFT) :
                 for cpnt in range(dsc_const.numComponents) :
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1 :
+                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         tmp_prevLine[cpnt + (vPos % 2)][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
-                    else :
+                    else:
                         tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
             # for PADDING RIGHT
@@ -208,12 +209,12 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                         tmp_prevLine[cpnt][mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt][
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
             # Deliver the value from "tmp_prevLine" to "prevLine"
-            for cpnt in range(dsc_const.numComponents) :
-                for i in range(lbufWidth) :
+            for cpnt in range(dsc_const.numComponents):
+                for i in range(lbufWidth):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         prevLine[cpnt + (vPos % 2)][i] = tmp_prevLine[cpnt + (vPos % 2)][i]
 
-                    else :
+                    else:
                         prevLine[cpnt][i] = tmp_prevLine[cpnt][i]
 
         # End of While (Encoding process)

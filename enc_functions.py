@@ -1276,16 +1276,20 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
     # CASE 2 ||| hpos==(0,1,2,3 -> 2) | (4,5,6,7 -> 6) | (8,9,10,11 -> 10) | (12,13,14,15 -> 14)
     mod_hPos = int(hPos / dsc_const.pixelsInGroup) * dsc_const.pixelsInGroup + int(dsc_const.pixelsInGroup / 2)
 
-    if pps.native_420 or pps.native_422:
+    if (pps.native_420 or pps.native_422):
         mod_hPos = CLAMP(hPos, 2, pps.slice_width - 1 - 2)
+
     else:
         # 3 <= mod_hPos <= end - 3
-        mod_hPos = CLAMP(mod_hPos, defines.ICH_PIXELS_ABOVE / 2, pps.slice_width - 1 - (defines.ICH_PIXELS_ABOVE / 2))
+        temp_val = int(defines.ICH_PIXELS_ABOVE / 2)
+        mod_hPos = CLAMP(mod_hPos, int(defines.ICH_PIXELS_ABOVE / 2), pps.slice_width - 1 - int(defines.ICH_PIXELS_ABOVE / 2))
 
     ############# Read out "ICH pixel value" at "entry" #############
-    if ((not first_line_flag) and prevline_index >= 0):
+    if ((not first_line_flag) and (prevline_index >= 0)):
         ## TODO native_420 mode
         ## TODO native_420 mode
+        idx = mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT
+
         read_pixel[0] = prevLine[0, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
         read_pixel[1] = prevLine[1, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
         read_pixel[2] = prevLine[2, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]

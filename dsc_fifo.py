@@ -1,5 +1,5 @@
 import numpy as np
-PRINT_DEBUG_OPT = 0
+PRINT_DEBUG_OPT = True
 
 class DSCFifo:
     def __init__(self, size):

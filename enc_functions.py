@@ -1122,7 +1122,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             print("SE Size FIFO too small")
 
     if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
-        ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifters)
+        ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters)
 
     vlc_var.codedGroupSize = encoding_bits
 
@@ -1150,7 +1150,7 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     rc_var.chunkPixelTimes = 0
 
 
-def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifters):
+def ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters):
     for i in range(pps.numSsps):
 
         if (Shifters[i].fullness < dsc_const.maxSeSize[i]):
@@ -1171,7 +1171,8 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf_var, FIFOs, seSizeFIFOs, Shifte
 
                 ##### Print out encoded data #####
                 # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
-                putbits(d, 8, buf_var)
+                ##putbits(d, 8, buf_var)
+                Shifters[i].fifo_put_bits(d, 8)
 
         #sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
         sz = seSizeFIFOs[i].fifo_get_bits(8, 0)

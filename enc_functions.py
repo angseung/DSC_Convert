@@ -1119,7 +1119,8 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
         if (FIFOs[i].fullness - start_fullness[i] > dsc_const.maxSeSize[i]):
         # if (prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]):
-            print("SE Size FIFO too small")
+            #print("SE Size FIFO too small")
+            pass
 
     if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
         ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters)

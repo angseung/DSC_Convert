@@ -926,7 +926,7 @@ def IsForceMpp(pps, dsc_const, rc_var):
     return force_mpp
 
 
-def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf_var, groupCnt,
+def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
              FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size):
     ######################### Declare variables #########################
     start_fullness = np.zeros(dsc_const.numSsps, ).astype(np.int32)
@@ -1123,7 +1123,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             pass
 
     if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
-        ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters)
+        ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters)
 
     vlc_var.codedGroupSize = encoding_bits
 
@@ -1151,7 +1151,7 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     rc_var.chunkPixelTimes = 0
 
 
-def ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters):
+def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
     for i in range(pps.numSsps):
 
         if (Shifters[i].fullness < dsc_const.maxSeSize[i]):
@@ -1170,13 +1170,20 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters):
                 else:
                     d = 0
 
+                ## put "d" into "buf" with size of "8 bits"
+                ## byte count value of "buf" is stored in "postMuxNumBits"
+                putbits(d, 8, buf)
+
+                ## fifo_put_bits(&dsc_state->shifter[i], d, 8); // put 'd' of '8-bits' into 'shifter'
+                ## HAS MODIFIED TO BELOW EXPRESSION...
+                ## TODO REMOVE THIS TYPE ERROR!!
                 if (isinstance(d, int)): ## Check "d" is a python integer or numpy integer...
                     ##### Print out encoded data #####
                     # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
                     ##putbits(d, 8, buf_var)
                     Shifters[i].fifo_put_bits(d, 8)
 
-                else: ##TODO
+                else:
                     d = d.item()
                     Shifters[i].fifo_put_bits(d, 8)
 

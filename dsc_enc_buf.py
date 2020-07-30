@@ -1,6 +1,6 @@
 import numpy as np
 from init_pps_params import initPps
-PRINT_DEBUG_OPT = False
+PRINT_DEBUG_OPT = 1
 
 class DSCBuffer():
 
@@ -30,7 +30,7 @@ def write_dsc_data(path, buf, pps):
     nbytes = pps.chunk_size
     nbits = nbytes * 8 ## Buffer is an bool numpy array in python model...
 
-    with open("path", "ab") as f:
+    with open(path, "ab") as f:
         for sy in range(pps.slice_height):
             for sx in range(slices_per_line):
                 ## Lets Consider in BIT ORDER!!
@@ -39,11 +39,11 @@ def write_dsc_data(path, buf, pps):
                     val = 0
 
                     for j in range(i, i + 8):
-                        if (PRINT_DEBUG_OPT):
-                            tmp = (current_idx[sx, :] + i + j)
-                            print("WRITING VALUE : %x" % tmp)
+                        # if (PRINT_DEBUG_OPT):
+                        #     tmp = (current_idx[sx, :] + i + j).item()
+                        #     print("WRITING VALUE : %x" % tmp)
 
-                        bit = buf.data[sx, current_idx[sx, :] + i + j]
+                        bit = int(buf.data[sx, current_idx[sx, :] + i + j].item())
                         val = (val << 1) + bit
 
                     if (PRINT_DEBUG_OPT):

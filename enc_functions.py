@@ -572,7 +572,7 @@ def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
     midrange = 1 << dsc_const.cpntBitDepth[cpnt]
     midrange = midrange / 2
     #print(midrange)
-    return (midrange + (recon_value % (1 << qlevel)))
+    return int(midrange + (recon_value % (1 << qlevel)))
 
 
 def QuantizeResidual(err, qlevel):
@@ -766,7 +766,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         ############# Reconstruct midpoint value  ##############
         #print(type(pred_var.quantizedResidualMid[unit][sampModCnt]))
-        recon_mid = pred_mid + ((pred_var.quantizedResidualMid[unit, sampModCnt]).astype(np.int32) << qlevel)
+        recon_mid = int(pred_mid + ((pred_var.quantizedResidualMid[unit, sampModCnt]).astype(np.int32) << qlevel))
         recon_mid = CLAMP(recon_mid, 0, maxval)
 
         if (dsc_const.full_ich_err_precision):

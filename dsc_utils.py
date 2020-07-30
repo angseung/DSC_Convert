@@ -9,26 +9,33 @@ def addbits(vlc_var, FIFO, data, nbits):
 
     return None
 
-
+## A function to write bits to ENC buffer from FIFO
 def putbits(val, size, buf):
+
+    ## BIT WRITE TEST WAS SUCCESSFUL
     if (size > 32):
         raise ValueError("error: putbits supports max of 32 bits")
 
-    # if (buf.postMuxNumBits > buf.buf_size):
-    #     raise ValueError("Encoding Buffer Overflow!!")
+    if (buf.postMuxNumBits > buf.buf_size):
+        raise ValueError("Encoding Buffer Overflow!!")
 
     for i in range(size - 1, -1, -1):
         currbit = (val >> i) & 1
-        if (not ((currbit== 0) or (currbit == 1))):
-            raise ValueError("Bit Value MUST BE bit 0 or bit 1")
+        cpntBitDepth
+        ## DELETE THIS CHECK TO IMPROVE ENC SPEED
+        # if (not ((currbit== 0) or (currbit == 1))):
+        #     raise ValueError("Bit Value MUST BE bit 0 or bit 1")
 
         # print("Current postMuxNumBits : [%d]" %buf.postMuxNumBits)
-        # buf.data[buf.postMuxNumBits] = currbit
+        buf.data[buf.postMuxNumBits] = currbit
 
-        try:
-            buf.data[buf.postMuxNumBits] = currbit
-        except :
-            aa = 1
+        ## TODO ENC BUFFER INDEX OUT OF BOUND FIX
+        # try:
+        #     buf.data[buf.postMuxNumBits] = currbit
+        #
+        # except :
+        #     aa = 1
+
         buf.postMuxNumBits += 1
 
     return None

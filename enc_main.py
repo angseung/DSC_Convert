@@ -21,11 +21,19 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     prevLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
     origLine = np.zeros((defines.NUM_COMPONENTS, pps.chunk_size + defines.PADDING_LEFT)).astype(np.int32)
 
+    ## LINE BUFFER VALUE INITIALIZE
+    for cpnt in range(dsc_const.numComponents):
+        initvalue = (1 << (dsc_const.cpntBitDepth[cpnt] - 1))
+        currLine[cpnt, :] = initvalue
+        tmp_prevLine[cpnt, :] = initvalue
+        prevLine[cpnt, :] = initvalue
+
     #fifo_size = int(((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE + 7)) / 8) * 8
     fifo_size = int(((pps.muxWordSize + defines.MAX_SE_SIZE - 1) * (defines.MAX_SE_SIZE) + 7) / 8)
     seSizefifo_size = int((8 * (pps.muxWordSize + defines.MAX_SE_SIZE - 1) + 7) / 8)
     shifter_size = int((pps.muxWordSize + defines.MAX_SE_SIZE + 7) / 8)
 
+    ## Declare FIFO and seSizeFIFO ##
     FIFO_Y = DSCFifo(fifo_size)
     FIFO_Co = DSCFifo(fifo_size)
     FIFO_Cg = DSCFifo(fifo_size)
@@ -38,6 +46,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     seSizeFifo_Y2 = DSCFifo(seSizefifo_size)
     seSizeFIFOs = [seSizeFifo_Y, seSizeFifo_Co, seSizeFifo_Cg, seSizeFifo_Y2]
 
+    ## TODO REMOVE FIFO-Class SHIFET, then change this to Value!!
     Shifter_Y = DSCFifo(shifter_size)
     Shifter_Co = DSCFifo(shifter_size)
     Shifter_Cg = DSCFifo(shifter_size)
@@ -87,8 +96,11 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ## Reset valid control of ICH
             if ((hPos == 0) and ((vPos == 0) or (pps.slice_width != pps.pic_width))):
-                for idx in range(defines.ICH_SIZE):
-                    ich_var.valid[idx] = 0
+                ich_var.valid[:] = 0
+
+                ## DELETE UNNESESSARY LOOP
+                # for idx in range(defines.ICH_SIZE):
+                #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
         PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,

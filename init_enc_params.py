@@ -189,8 +189,9 @@ class initDscConstants:
         # range_ = np.zeros(self.NUM_COMPONENTS, )
         self.cpntBitDepth = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
         for i in range(defines.NUM_COMPONENTS):
-            self.cpntBitDepth[i] = 1 << pps.bits_per_component
+            self.cpntBitDepth[i] = (pps.bits_per_component)
             diff_cond = (pps.convert_rgb & (i is not 0) & (i is not 3) & (pps.bits_per_component is not 0))  # 16 bpc condition
+
             if diff_cond:
                 self.cpntBitDepth[i] += 1
                 # range_[i] *= 2

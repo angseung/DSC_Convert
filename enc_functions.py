@@ -374,11 +374,11 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
     bpg = (pps.bits_per_pixel * sampModCnt + 8) >> 4  # Rounding fractional bits
     rcTgtBitGroup = max(0, bpg + pps.rc_range_parameters[selected_range][2] + rc_var.rcXformOffset)
-    min_QP = pps.rc_range_parameters[selected_range][0]
-    max_QP = pps.rc_range_parameters[selected_range][1]
+    min_QP = (pps.rc_range_parameters[selected_range][0]).item()
+    max_QP = (pps.rc_range_parameters[selected_range][1]).item()
     tgtMinusOffset = max(0, rcTgtBitGroup - pps.rc_tgt_offset_lo)
     tgtPlusOffset = max(0, rcTgtBitGroup + pps.rc_tgt_offset_hi)
-    incr_amount = (vlc_var.codedGroupSize - rcTgtBitGroup) >> 1
+    incr_amount = ((vlc_var.codedGroupSize - rcTgtBitGroup) >> 1)
 
     ### How about make this param canstant??
     ### SW
@@ -1165,7 +1165,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
 
                 elif (0 < sz < 8):
                     #d = fifo_get_bits(FIFOs[i], sz, 0) << (8 - sz)
-                    d = int(FIFOs[i].fifo_get_bits(sz, 0)) << (8 - sz)
+                    d = (int(FIFOs[i].fifo_get_bits(sz, 0)) << int(8 - sz))
 
                 else:
                     d = 0
@@ -1174,17 +1174,19 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
                 ## byte count value of "buf" is stored in "postMuxNumBits"
                 putbits(d, 8, buf)
 
+                Shifters[i].fifo_put_bits(d, 8)
                 ## fifo_put_bits(&dsc_state->shifter[i], d, 8); // put 'd' of '8-bits' into 'shifter'
                 ## HAS MODIFIED TO BELOW EXPRESSION...
-                ## TODO REMOVE THIS TYPE ERROR!!
-                if (isinstance(d, int)): ## Check "d" is a python integer or numpy integer...
-                    ##### Print out encoded data #####
-                    # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
-                    # putbits(d, 8, buf_var)
-
-                else:
-                    d = d.item()
-                    Shifters[i].fifo_put_bits(d, 8)
+                ## SOLVED REMOVE THIS TYPE ERROR!!
+                # if (isinstance(d, int)): ## Check "d" is a python integer or numpy integer...
+                #     ##### Print out encoded data #####
+                #     # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
+                #     # putbits(d, 8, buf_var)
+                #     Shifters[i].fifo_put_bits(d, 8)
+                #
+                # else:
+                #     d = d.item()
+                #     Shifters[i].fifo_put_bits(d, 8)
 
         #sz = fifo_get_bits(seSizeFIFOs[i], 8, 0)
         sz = seSizeFIFOs[i].fifo_get_bits(8, 0)

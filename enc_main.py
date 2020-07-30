@@ -233,7 +233,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                  FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
 
     while (seSizeFIFOs[0].fullness > 0):
-        ProcessGroupEnc(pps, dsc_const, vlc_var, FIFOs, seSizeFIFOs, Shifters)
+        ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters)
         # End of While (Encoding process)
 
     #######################################################################

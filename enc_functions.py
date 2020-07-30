@@ -1180,8 +1180,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
                 if (isinstance(d, int)): ## Check "d" is a python integer or numpy integer...
                     ##### Print out encoded data #####
                     # 'buf_var' instantiated in dsc_main contains (outbuf, postMuxNumBits)
-                    ##putbits(d, 8, buf_var)
-                    Shifters[i].fifo_put_bits(d, 8)
+                    # putbits(d, 8, buf_var)
 
                 else:
                     d = d.item()

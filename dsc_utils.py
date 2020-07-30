@@ -9,22 +9,25 @@ def addbits(vlc_var, FIFO, data, nbits):
 
     return None
 
+
 def putbits(val, size, buf):
     if (size > 32):
         raise ValueError("error: putbits supports max of 32 bits")
 
+    if (buf.postMuxNumBits > buf.buf_size):
+        raise ValueError("Encoding Buffer Overflow!!")
+
     for i in range(size - 1, -1, -1):
         currbit = (val >> i) & 1
-        if (not (currbit == 0 or currbit == 1)):
+        if (not ((currbit== 0) or (currbit == 1))):
             raise ValueError("Bit Value MUST BE bit 0 or bit 1")
 
-        buf.data[buf.slice_index, buf.postMuxNumBits] = currbit
+        print("Current postMuxNumBits : [%d]" %buf.postMuxNumBits)
+        buf.data[buf.postMuxNumBits] = currbit
         buf.postMuxNumBits += 1
 
-        if (buf.postMuxNumBits > buf.buf_size):
-            raise ValueError("Encoding Buffer Overflow!!")
-
     return None
+
 
 def getbits(size, buf, sign):
     outval = 0
@@ -59,6 +62,7 @@ def bin2dec(b_num):
         elif digit == '-':
             value = value * -1
     return value
+
 
 # int_num = integer value
 # returns shifted integer value
@@ -99,6 +103,7 @@ def ceil_log2(val):
 def FILT3(a,b,c):
     return (a + 2 * b + c + 2) / 2
 
+
 def CLAMP(X, MIN, MAX):
     if X > MAX:
         return MAX
@@ -107,9 +112,11 @@ def CLAMP(X, MIN, MAX):
     else:
         return X
 
+
 def QuantDivisor(a):
     arr = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
     return arr[a]
+
 
 def QuantOffset(a):
     arr = [0, 0, 1, 3,  7, 15, 31,  63, 127, 255,  511, 1023, 2047, 4095,  8191, 16383, 32767]

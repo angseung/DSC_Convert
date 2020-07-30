@@ -61,7 +61,7 @@ class initFlatVariables:
 class initVlcVariables:
     def __init__(self, defines):
         self.numBits = 0
-        self.postMuxNumBits = 0
+        # self.postMuxNumBits = 0 ## MOVED TO ENC BUFFER MODEL...
         self.rcSizeUnit = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.codedGroupSize = 0
         self.predictedSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)

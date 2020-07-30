@@ -142,8 +142,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ########### Update ICH pixels ############
             if ((defines.ICH_BITS != 0) and (hPos < (pps.slice_width - 1))):
-                mod_hPos = hPos - 2
-                ich_p = np.zeros(defines.NUM_COMPONENTS, )
+                mod_hPos = (hPos - 2)
+                ich_p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
                 for i in range(dsc_const.pixelsInGroup):
                     for cpnt in range(dsc_const.numComponents):
                         ich_p[cpnt] = currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT]

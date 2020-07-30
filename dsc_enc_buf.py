@@ -7,15 +7,18 @@ class DSCBuffer():
     def __init__(self, pps):
         buf_size = pps.chunk_size * pps.slice_height * 8 # in bit unit, not BYTE
         slices_per_line = int(pps.pic_width / pps.slice_width)
-        self.data = np.zeros([slices_per_line, buf_size], dtype = np.bool)
+        # self.data = np.zeros([slices_per_line, buf_size], dtype = np.bool)
+        self.data = np.zeros(buf_size * slices_per_line, dtype = np.bool)
         self.slice_index = 0
+
+        ## Number of bits read/written post-mux
         self.postMuxNumBits = 0 ## Pointer for data[i, :] Vector.
-        self.buf_size = self.data.shape[1]
+        self.buf_size = (self.data).shape[0]
 
         return None
 
     def buf_reset(self):
-        self.data[:, :] = 0
+        self.data[:] = 0
         self.postMuxNumBits = 0
         self.slice_index = 0
 

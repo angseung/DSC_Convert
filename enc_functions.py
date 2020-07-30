@@ -583,7 +583,7 @@ def QuantizeResidual(err, qlevel):
     """
     # print(type(err))
     # print(err)
-    err = err.astype(np.int32)
+    # err = err.astype(np.int32)
     # print(type(err))
     # print(err)
 
@@ -712,9 +712,9 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
                                    pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)
-        actual_x = origLine[cpnt, hPos + defines.PADDING_LEFT]
+        actual_x = origLine[cpnt, hPos + defines.PADDING_LEFT].item()
 
-        err_raw = actual_x - pred_x  # get Quantized Residual
+        err_raw = int(actual_x - pred_x)  # get Quantized Residual
         err_raw_q = QuantizeResidual(err_raw, qlevel)  # quantized residual check
 
         pred_mid = FindMidpoint(dsc_const, cpnt, qlevel,
@@ -755,7 +755,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         ############# Reconstruct prediction value ##############
         maxval = (1 << dsc_const.cpntBitDepth[cpnt]) - 1
-        recon_x = CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval)
+        recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)
@@ -1225,14 +1225,14 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
             for i in range(dsc_const.pixelsInGroup):
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
-                    addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
+                    addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
         #### ICH Lookup (unit > 0, suffix)
         else:
 
             for i in range(dsc_const.pixelsInGroup):
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
-                    addbits(vlc_var, FIFO, ich_var.ichLookup[i], defines.ICH_BITS)
+                    addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
 
     else:
 

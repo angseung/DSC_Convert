@@ -21,7 +21,6 @@ def putbits(val, size, buf):
 
     for i in range(size - 1, -1, -1):
         currbit = (val >> i) & 1
-        cpntBitDepth
         ## DELETE THIS CHECK TO IMPROVE ENC SPEED
         # if (not ((currbit== 0) or (currbit == 1))):
         #     raise ValueError("Bit Value MUST BE bit 0 or bit 1")

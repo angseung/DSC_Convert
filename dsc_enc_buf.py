@@ -46,11 +46,13 @@ def write_dsc_data(path, buf, pps):
                         #     tmp = (current_idx[sx, :] + i + j).item()
                         #     print("WRITING VALUE : %x" % tmp)
 
-                        bit = int(buf.data[sx, current_idx[sx, :] + i + j].item())
+                        bit = int(buf.data[current_idx[sx, :] + i + j].item())
                         val = (val << 1) + bit
 
                     if (PRINT_DEBUG_OPT):
                         print("WRITING VALUE : %x" %val)
+
+                    val = val.to_bytes(1, byteorder = 'big')
                     f.write(val)
 
                 current_idx[sx] += nbytes

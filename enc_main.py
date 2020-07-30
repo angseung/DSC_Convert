@@ -73,13 +73,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     while (not done):
         print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
-        if hPos == 0:
+        if (hPos == 0):
             ## Get input image when the first pixel of each line starts
             origLine[0 : dsc_const.numComponents, 0 : - (defines.PADDING_LEFT)] = PopulateOrigLine(pps, hPos, vPos, pic)
 
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions
-        if sampModCnt == 0:
+        if (sampModCnt == 0):
 
             modified_qp = min(2*pps.bits_per_component - 1, rc_var.masterQp + 2)
             flat_qp = max(rc_var.masterQp - pps.somewhat_flat_qp_delta, 0)

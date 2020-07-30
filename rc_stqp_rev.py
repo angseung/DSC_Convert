@@ -161,7 +161,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, ich_var, vlc_var, rc_var, fl
     # for i in range(sampModCnt):
     #     ### pixelCount???
     #     pass
-
+    rcSizeGroupPrev = rc_var.rcSizeGroup
     rcSizeGroup = 0
     for i in range(3):
         rcSizeGroup += vlc_var.rcSizeUnit[i]

@@ -52,6 +52,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     Shifter_Cg = DSCFifo(shifter_size)
     Shifter_Y2 = DSCFifo(shifter_size)
     Shifters = [Shifter_Y, Shifter_Co, Shifter_Cg, Shifter_Y2]
+    #############################################################
 
     oldQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     mapQLevel = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -117,28 +118,29 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         #####################################################################
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
-        if ((sampModCnt == 2) or (hPos == pps.slice_width - 1)):
+        if ((sampModCnt == 2) or (hPos == (dsc_const.sliceWidth - 1))):
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
             flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
             if (sampModCnt < 2):
+
                 if (sampModCnt == 0):
                     ich_var.ichLookup[1] = ich_var.ichLookup[0]
                     ich_var.ichLookup[2] = ich_var.ichLookup[0]
-                    hPos += 2
+                    hPos += 2 ## set hPos to indicate the last pixel in a group
 
                 if (sampModCnt == 1):
                     ich_var.ichLookup[2] = ich_var.ichLookup[1]
-                    hPos += 1
+                    hPos += 1 ## set hPos to indicate the last pixel in a group
 
             ######################### Variable Length Encoding (VLC) ####################
-            # VLCGroup()
-
             VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
                      FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
 
-            bufferFullness = 0
-            bufferFullness += vlc_var.codedGroupSize
+            # bufferFullness = 0 ## Declair bufferFullness Variable
+            bufferFullness = rc_var.bufferFullness ## 2020.07.30 Revision
+            bufferFullness += vlc_var.codedGroupSize # Increase buffer fullness
+
             if (bufferFullness > pps.rcb_bits):
                 ## This check may actually belong after tgt_bpg has been subtracted
                 print("The buffer model has overflowed.  This probably occurred due to an error in the")
@@ -149,16 +151,20 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ########### The final reconstructed pixel value ############
             if (ich_var.ichSelected):
                 UseICHistory(defines, dsc_const, ich_var, hPos, currLine)
+
             else:
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)
 
             ########### Update ICH pixels ############
-            if ((defines.ICH_BITS != 0) and (hPos < (pps.slice_width - 1))):
+            if ((not (defines.ICH_BITS == 0)) and (hPos < (pps.slice_width - 1))): ## Skip the Update ICH of the last group
                 mod_hPos = (hPos - 2)
+
                 ich_p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
                 for i in range(dsc_const.pixelsInGroup):
+
                     for cpnt in range(dsc_const.numComponents):
                         ich_p[cpnt] = currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT]
+
                     UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, ich_p)
 
             ########### Predict MMAP vs BP for the next line ############
@@ -168,22 +174,30 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ########### Store reconstructed value in prevLineBuf (double buffer) ############
             for mod_hPos in range(hPos - 2 + defines.PADDING_LEFT, hPos + 1 + defines.PADDING_LEFT):
+
                 for cpnt in range(dsc_const.numComponents):
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
+                    if ((pps.native_420) and (cpnt == dsc_const.numComponents - 1)):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
             ################################## Rate controller  #############################
+            [rc_var.currentScale, rc_var.rcXformOffset] = calc_fullness_offset(vPos, pixelCount,
+                                                                               groupCnt, pps, define, dsc_const, vlc_var, rc_var)
+
+            ############################### From RateControl Func...
             rc_var.prevFullness = rc_var.bufferFullness
 
             for i in range(sampModCnt):
                 pixelCount += 1
+
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
+            # groupCnt += 1 ## TODO groupCnt increase timing
             rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
             # End of Group processing
 
@@ -215,6 +229,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                     if pps.native_420 and cpnt == dsc_const.numComponents - 1:
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
@@ -236,7 +251,6 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
                     else:
                         prevLine[cpnt, i] = tmp_prevLine[cpnt, i]
-
     ## while Done!
 
     if (not (sampModCnt == 0)): ## Pad last unit wih 0's if needed

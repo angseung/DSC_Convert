@@ -287,7 +287,8 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     #     pass
 
     # Add up estimated bits for the Group, i.e. as if VLC sample size matched max sample size
-    rcSizeGroup = (vlc_var.rcSizeUnit).sum()
+    rcSizeGroupPrev = rc_var.rcSizeGroup
+    rcSizeGroup = ((vlc_var.rcSizeUnit).sum()).item()
 
     # Set target number of bits per Group according to buffer fullness
     range_cfg = []
@@ -295,9 +296,9 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     ## Linear Transformation
     throttle_offset = rc_var.rcXformOffset
     throttle_offset -= pps.rc_model_size
+
     # *MODEL NOTE* MN_RC_XFORM
-    rcBufferFullness = (rc_var.currentScale * (
-            rc_var.bufferFullness + rc_var.rcXformOffset)) >> define.RC_SCALE_BINARY_POINT
+    rcBufferFullness = (rc_var.currentScale * (rc_var.bufferFullness + rc_var.rcXformOffset)) >> define.RC_SCALE_BINARY_POINT
 
     overflowAvoid = (rc_var.bufferFullness + rc_var.rcXformOffset) > define.OVERFLOW_AVOID_THRESHOLD
 
@@ -1282,7 +1283,7 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
         return
 
     mod_hPos = hPos - dsc_const.pixelsInGroup + 1
-    p = np.zeros(defines.NUM_COMPONENTS, )
+    p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
 
     for i in range(dsc_const.pixelsInGroup):
         p[0] = ich_var.ichPixels[i, 0]
@@ -1468,6 +1469,7 @@ def SampToLineBuf(dsc_const, pps, cpnt, x):
     ## Allocate Storage to Store Reconstructed Pixel Value
     shift_amount = max(dsc_const.cpntBitDepth[cpnt] - pps.line_buf_depth, 0)
     storedSample = 0
+
     if (shift_amount > 0):
         rounding = 1 << (shift_amount - 1)
 

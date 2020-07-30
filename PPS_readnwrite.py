@@ -98,7 +98,7 @@ def parse_pps(path = "w1.dsc", PRINT_PPS_OPT = False):
         ])
 
         # rc_range_parameters, (15, 3) shape ndarray
-        rc_range_parameters = np.zeros(shape=(15, 3))
+        rc_range_parameters = np.zeros(shape = (15, 3), dtype = np.int32)
         for i in range(rc_range_parameters.shape[0]):
             tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
             rc_range_parameters[i, :] = [tmp >> 11, (tmp >> 6) & 0b11111, tmp & 0b111111]

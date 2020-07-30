@@ -29,7 +29,7 @@ else:
 orig_pixel = np.array(im) # (pic_width, pic_height, num_component) shape ndarray
 orig_pixel = orig_pixel.transpose([1, 0, 2])
 
-output_pic = np.zeros(orig_pixel.shape)
+output_pic = np.zeros(orig_pixel.shape, dtype = np.int32)
 ##################################################################################
 
 ################ configuration constants ################
@@ -49,7 +49,7 @@ user_options['bits_per_pixel'] = 8 << 4  # 4-bits Fractional
 user_options["pic_width"] = im.width
 user_options["pic_height"] = im.height
 user_options["slice_width"] = 1920 # 480 default
-user_options["slice_height"] = 4 # 108 default
+user_options["slice_height"] = 108 # 108 default
 
 ##################################################################################
 pps = initPps()
@@ -66,7 +66,7 @@ pic_val = PicPosition()
 
 slices_per_line = int((pps.pic_width + pps.slice_width - 1) / pps.slice_width)
 encoded_buf_size = pps.chunk_size * pps.slice_height
-encoded_buf = np.zeros([slices_per_line, encoded_buf_size])
+encoded_buf = np.zeros([slices_per_line, encoded_buf_size], dtype = np.int32)
 buf = DSCBuffer(pps)
 
 ## write Magic Number and PPS datas...

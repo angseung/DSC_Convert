@@ -206,12 +206,12 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ### RESET RESIDUAL VALUES...
             vlc_var.midpointSelected[:] = 0
-            pred_size.quantizedResidual[:, :] = 0
-            pred_size.quantizedResidualMid[:, :] = 0
+            pred_var.quantizedResidual[:, :] = 0
+            pred_var.quantizedResidualMid[:, :] = 0
 
             ### CLEAR ICH ERRORS...
-            pred_size.maxError[:] = 0
-            pred_size.maxMidError[:] = 0
+            pred_var.maxError[:] = 0
+            pred_var.maxMidError[:] = 0
             ich_var.maxIchError[:] = 0
             ################ END OF LAST GROUP PROCESSING
 

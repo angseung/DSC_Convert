@@ -98,6 +98,7 @@ class initRcVariables:
         self.bitSaveMode = 0
         self.mppState = 0
         self.prevFullness = 0
+        self.scaleIncrementStart = 0
 
 class initDefines:
     def __init__(self, pps):

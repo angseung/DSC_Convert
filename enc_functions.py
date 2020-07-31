@@ -217,14 +217,14 @@ def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc
     flag5 = (vPos == 1)
 
     if (flag5 and (not flag4)):
-        current_bpg_target += pps.second_line_bpg_ofs
-        increment += -(pps.second_line_bpg_ofs << define.OFFSET_FRACTIONAL_BITS)
+        current_bpg_target += pps.second_line_bpg_offset
+        increment += -(pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
         rc_var.secondOffsetApplied = 1
         rc_var.rcXformOffset -= pps.second_line_offset_adj
 
     elif (flag5 and flag4):
-        current_bpg_target += pps.second_line_bpg_ofs
-        increment += -(pps.second_line_bpg_ofs << define.OFFSET_FRACTIONAL_BITS)
+        current_bpg_target += pps.second_line_bpg_offset
+        increment += -(pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
 
     elif ((not flag5)):
         current_bpg_target += (pps.nsl_bpg_offset >> define.OFFSET_FRACTIONAL_BITS)  # nsl_bpg_offset = 0

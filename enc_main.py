@@ -186,13 +186,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ################################## Rate controller  #############################
             [rc_var.currentScale, rc_var.rcXformOffset] = calc_fullness_offset(vPos, pixelCount,
-                                                                               groupCnt, pps, define, dsc_const, vlc_var, rc_var)
+                                                                               groupCnt, pps, defines, dsc_const, vlc_var, rc_var)
 
             ############################### From RateControl Func...
             rc_var.prevFullness = rc_var.bufferFullness
 
             for i in range(sampModCnt):
-                pixelCount += 1
+                pixelCount += 1 ## pixelCount MUST BE INCREASED IN ENC_MAIN LOOP FOR A HARDWARE IMPLEMENTATION...
 
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)

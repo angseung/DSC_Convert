@@ -122,8 +122,8 @@ def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc
         increment = pps.nfl_bpg_offset
 
     if (vPos == 1):
-        current_bpg_target += pps.second_line_bpg_ofs
-        increment += -(pps.second_line_bpg_ofs << define.OFFSET_FRACTIONAL_BITS)
+        current_bpg_target += pps.second_line_bpg_offset
+        increment += -(pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
 
         if (not rc_var.secondOffsetApplied):
             rc_var.secondOffsetApplied = 1

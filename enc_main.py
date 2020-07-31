@@ -76,7 +76,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
-            origLine[0 : dsc_const.numComponents, 0 : - (defines.PADDING_LEFT)] = PopulateOrigLine(pps, hPos, vPos, pic)
+            origLine[0 : dsc_const.numComponents, (defines.PADDING_LEFT) : ] = PopulateOrigLine(pps, dsc_const, hPos, vPos, pic)
 
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions
@@ -224,13 +224,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             # groupCnt += 1 # increases to the end of slice /// MOVED TO UPPER LINE!!
             sampModCnt = 0
 
-        if (vPos >= pps.slice_height):
-            done = 1
-
         ## End of a line
         if (hPos >= dsc_const.sliceWidth):
-            hPos = 0
-            vPos += 1
 
             # Mapping Reconstructed Value to Out Picture 'op'
             op = currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine)
@@ -252,12 +247,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 for cpnt in range(dsc_const.numComponents):
 
                     if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
-                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
                     else:
-                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
             # Deliver the value from "tmp_prevLine" to "prevLine"
             for cpnt in range(dsc_const.numComponents):
@@ -268,6 +261,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
                     else:
                         prevLine[cpnt, i] = tmp_prevLine[cpnt, i]
+
+            hPos = 0
+            vPos += 1
+
+            if (vPos >= pps.slice_height):
+                done = 1
+
     ## while Done!
 
     if (not (sampModCnt == 0)): ## Pad last unit wih 0's if needed

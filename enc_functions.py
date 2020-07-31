@@ -16,8 +16,8 @@ def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
     return op
 
 
-def PopulateOrigLine(pps, hPos, vPos, pic):
-    width = pps.slice_width
+def PopulateOrigLine(pps, dsc_const, hPos, vPos, pic):
+    width = dsc_const.sliceWidth
 
     return (pic[hPos : hPos + width, vPos, :]).transpose(1, 0)
 
@@ -43,9 +43,10 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
     qp = max(rc_var.masterQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
     thresh = np.copy(flatQLevel)
 
-    is_end_of_slice = ((hPos + 1) >= pps.slice_width)  # If group starts past the end of the slice, it can't be flat
+    is_end_of_slice = ((hPos + 1) >= dsc_const.sliceWidth)  # If group starts past the end of the slice, it can't be flat
+    is_check_skip = ((hPos + 2) >= dsc_const.sliceWidth)  # Skip flatness check 2 if it only contains a single pixel
 
-    if (not is_end_of_slice):
+    if ((not (is_end_of_slice)) or (not (is_check_skip))):
         for cpnt in range(dsc_const.numComponents):
             max_val = -1
             min_val = 99999
@@ -56,34 +57,38 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
                 pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i]
 
-                if max_val < pixel_val: max_val = pixel_val
-                if min_val > pixel_val: min_val = pixel_val
+                if (max_val < pixel_val): max_val = pixel_val
+                if (min_val > pixel_val): min_val = pixel_val
 
             is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
             is_veryflat_failed = (max_val - min_val) > vf_thresh
 
-            if not is_somewhatflat_falied:
+            if (not is_somewhatflat_falied):
                 t1_somewhat_flat = False
 
-            if not is_veryflat_failed:
+            if (not is_veryflat_failed):
                 t1_very_flat = False
 
-        is_check_skip = ((hPos + 2) >= pps.slice_width)  # Skip flatness check 2 if it only contains a single pixel
         test2_condition = (not (t1_very_flat or t1_somewhat_flat))
 
         # Left adjacent isn't flat, but current group & group to the right is flat
         #### Flat Test 2
-        if (test2_condition):
+        if (test2_condition and (not (is_check_skip))):
             for cpnt in range(define.NUM_COMPONENTS):
                 # vf_thresh = pps.flatness_det_thresh
                 max_val = -1
                 min_val = 99999
 
-                for i in range(fc2_start, fc2_end):
-                    pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i]
+                for j in range(fc2_start, fc2_end):
+                    # pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                    try:
+                        pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
 
-                    if max_val < pixel_val: max_val = pixel_val
-                    if min_val > pixel_val: min_val = pixel_val
+                    except:
+                        a = 0
+
+                    if (max_val < pixel_val): max_val = pixel_val
+                    if (min_val > pixel_val): min_val = pixel_val
 
                 is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
                 is_veryflat_failed = (max_val - min_val) > vf_thresh

@@ -119,6 +119,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
         if ((sampModCnt == 2) or (hPos == (dsc_const.sliceWidth - 1))):
+            ## Last Pixel in a Group "OR" Outbound pixel outside of slice
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
             flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
@@ -187,19 +188,32 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ################################## Rate controller  #############################
             [rc_var.currentScale, rc_var.rcXformOffset] = calc_fullness_offset(vPos, pixelCount,
                                                                                groupCnt, pps, defines, dsc_const, vlc_var, rc_var)
-
+            groupCnt += 1 ## TODO groupCnt increase timing
             ############################### From RateControl Func...
             rc_var.prevFullness = rc_var.bufferFullness
 
-            for i in range(sampModCnt):
+            for i in range(dsc_const.pixelsInGroup):
                 pixelCount += 1 ## pixelCount MUST BE INCREASED IN ENC_MAIN LOOP FOR A HARDWARE IMPLEMENTATION...
 
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
-            # groupCnt += 1 ## TODO groupCnt increase timing
+
             rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
-            # End of Group processing
+
+            ## masterQp decision is done in Rate Control function...
+            # rc_var.masterQp = rc_var.prevQp
+
+            ### RESET RESIDUAL VALUES...
+            vlc_var.midpointSelected[:] = 0
+            pred_size.quantizedResidual[:, :] = 0
+            pred_size.quantizedResidualMid[:, :] = 0
+
+            ### CLEAR ICH ERRORS...
+            pred_size.maxError[:] = 0
+            pred_size.maxMidError[:] = 0
+            ich_var.maxIchError[:] = 0
+            ################ END OF LAST GROUP PROCESSING
 
         ################## Counter controller ############################
         hPos += 1
@@ -207,46 +221,49 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
         ### RESET sampModCnt Value
         if (sampModCnt == 3):
-            groupCnt += 1 # increases to the end of slice
+            # groupCnt += 1 # increases to the end of slice /// MOVED TO UPPER LINE!!
             sampModCnt = 0
 
-        ## End of a line
-        if (hPos >= pps.slice_width):
-            # end of line processing
+        if (vPos >= pps.slice_height):
+            done = 1
 
+        ## End of a line
+        if (hPos >= dsc_const.sliceWidth):
             hPos = 0
             vPos += 1
 
-            if (vPos >= pps.slice_height):
-                done = 1
-
             # Mapping Reconstructed Value to Out Picture 'op'
             op = currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine)
+
             # Fill tmp_prevLine outside of dsc_state->sliceWidth (PADDING_LEFT and PADDING_RIGHT)
-            # for PADDING LEFT
             for mod_hPos in range(defines.PADDING_LEFT):
                 for cpnt in range(dsc_const.numComponents):
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
+
+                    if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+
             # for PADDING RIGHT
-            for mod_hPos in range(defines.PADDING_LEFT + pps.slice_width, lbufWidth):
+            for mod_hPos in range(defines.PADDING_LEFT + dsc_const.sliceWidth, lbufWidth):
                 for cpnt in range(dsc_const.numComponents):
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
+
+                    if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+
             # Deliver the value from "tmp_prevLine" to "prevLine"
             for cpnt in range(dsc_const.numComponents):
                 for i in range(lbufWidth):
-                    if pps.native_420 and cpnt == dsc_const.numComponents - 1:
+
+                    if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
                         prevLine[cpnt + (vPos % 2), i] = tmp_prevLine[cpnt + (vPos % 2), i]
 
                     else:

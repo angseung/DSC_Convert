@@ -280,6 +280,10 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
+    rc_var.prevQp = rc_var.stQp
+    rc_var.prev2Qp = rc_var.prevQp
+    stQp = 0
+    curQp = 0
 
     # pixelCount moved to enc_main
     # for i in range(sampModCnt):
@@ -298,7 +302,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     throttle_offset -= pps.rc_model_size
 
     # *MODEL NOTE* MN_RC_XFORM
-    rcBufferFullness = (rc_var.currentScale * (rc_var.bufferFullness + rc_var.rcXformOffset)) >> define.RC_SCALE_BINARY_POINT
+    rcBufferFullness = ((rc_var.currentScale * (rc_var.bufferFullness + rc_var.rcXformOffset)) >> (define.RC_SCALE_BINARY_POINT))
 
     overflowAvoid = (rc_var.bufferFullness + rc_var.rcXformOffset) > define.OVERFLOW_AVOID_THRESHOLD
 
@@ -373,8 +377,8 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     selected_range = rc_var.prevRange
     rc_var.prevRange = j
 
-    bpg = (pps.bits_per_pixel * sampModCnt + 8) >> 4  # Rounding fractional bits
-    rcTgtBitGroup = max(0, bpg + pps.rc_range_parameters[selected_range][2] + rc_var.rcXformOffset)
+    bpg = (int(pps.bits_per_pixel * sampModCnt + 8) >> 4)  # Rounding fractional bits
+    rcTgtBitGroup = max(0, bpg + (pps.rc_range_parameters[selected_range][2]).item() + rc_var.rcXformOffset)
     min_QP = (pps.rc_range_parameters[selected_range][0]).item()
     max_QP = (pps.rc_range_parameters[selected_range][1]).item()
     tgtMinusOffset = max(0, rcTgtBitGroup - pps.rc_tgt_offset_lo)
@@ -383,31 +387,32 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
     ### How about make this param canstant??
     ### SW
-    if pps.native_420:
-        predActivity = rc_var.prevQp + max(vlc_var.predictedSize[0], vlc_var.predictedSize[1]) + vlc_var.predictedSize[
-            2]
-    elif pps.native_422:
-        predActivity = rc_var.prevQp + ((vlc_var.predictedSize.sum()) >> 1)
-    else:  # 444 Mode
-        predActivity = rc_var.prevQp + vlc_var.predictedSize[0] + max(vlc_var.predictedSize[1],
-                                                                      vlc_var.predictedSize[2])
+    predActivity = 0
+    if (pps.native_420):
+        predActivity = rc_var.prevQp + max(vlc_var.predictedSize[0].item(), vlc_var.predictedSize[1].item()) + vlc_var.predictedSize[2].item()
 
-    bitSaveThresh = dsc_const.cpntBitDepth[0] + dsc_const.cpntBitDepth[1] - 2
+    elif (pps.native_422):
+        predActivity = rc_var.prevQp + ((vlc_var.predictedSize.sum()) >> 1)
+
+    else:  # 444 Mode
+        predActivity = rc_var.prevQp + vlc_var.predictedSize[0].item() + max(vlc_var.predictedSize[1].item(), vlc_var.predictedSize[2].item())
+
+    bitSaveThresh = dsc_const.cpntBitDepth[0].item() + dsc_const.cpntBitDepth[1].item() - 2
 
     ### *MODEL NOTE* MN_RC_SHORT_TERM
     ## bitSaveMode Decision Start...
     tmp_mppState = rc_var.mppState + 1
-    bs_cond1 = (vPos > 0) & (flat_var.firstFlat == -1)
+    bs_cond1 = ((vPos > 0) and (flat_var.firstFlat == -1))
     bs_cond2 = (tmp_mppState >= 2)
-    bs_cond3 = ((not ich_var.ichSelected) & (mpsel >= 3))
-    bs_cond4 = ((not ich_var.ichSelected) & (predActivity >= bitSaveThresh))
+    bs_cond3 = ((not ich_var.ichSelected) and (mpsel >= 3))
+    bs_cond4 = ((not ich_var.ichSelected) and (predActivity >= bitSaveThresh))
     bs_cond5 = ich_var.ichSelected
 
-    bs_case1 = bs_cond1 & bs_cond3 & bs_cond2
-    bs_case2 = (bs_cond1 & bs_cond3 & (not bs_cond2))
-    bs_case3 = (bs_cond1 & bs_cond4)
-    bs_case4 = (bs_cond1 & bs_cond5)
-    bs_case5 = (bs_cond1 & (not bs_cond5))
+    bs_case1 = (bs_cond1 and bs_cond3 and bs_cond2)
+    bs_case2 = (bs_cond1 and bs_cond3 and (not bs_cond2))
+    bs_case3 = (bs_cond1 and bs_cond4)
+    bs_case4 = (bs_cond1 and bs_cond5)
+    bs_case5 = (bs_cond1 and (not bs_cond5))
     bs_case6 = (not bs_cond1)
 
     if bs_case1:
@@ -419,6 +424,9 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
     elif bs_case3:
         rc_var.bitSaveMode = rc_var.bitSaveMode
+
+    elif bs_case4:
+        rc_var.bitSaveMode = max(1, rc_var.bitSaveMode)
 
     elif bs_case5:
         rc_var.mppState = 0
@@ -433,14 +441,14 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     ######### stqp Condition decision..######
     cond1 = overflowAvoid
     cond2 = (rc_var.bufferFullness <= 192)
-    cond3 = rc_var.bitSaveMode == 2
-    cond4 = rc_var.bitSaveMode == 1
+    cond3 = (rc_var.bitSaveMode == 2)
+    cond4 = (rc_var.bitSaveMode == 1)
     cond5 = (rc_var.rcSizeGroup == define.UNITS_PER_GROUP)
     cond6 = (rc_var.rcSizeGroup < tgtMinusOffset)
     # & (vlc_var.codedGroupSize < tgtMinusOffset))
-    cond7 = ((rc_var.bufferFullness >= 64) &
+    cond7 = ((rc_var.bufferFullness >= 64) and
              (vlc_var.codedGroupSize > tgtPlusOffset))
-    cond8 = not cond7
+    cond8 = (not cond7)
     ##########################################
 
     if cond2:  # underflow Condition
@@ -448,19 +456,18 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
     elif cond3:
         max_QP = min(pps.bits_per_component * 2 - 1, max_QP + 1)
-        rc_var.stQp = rc_var.prevQp + 2  # cond3
+        rc_var.stQp = rc_var.prevQp + 2
 
     elif cond4:
         max_QP = min(pps.bits_per_component * 2 - 1, max_QP + 1)
-        rc_var.stQp = rc_var.prevQp  # cond4
+        rc_var.stQp = rc_var.prevQp
 
     elif cond5:
         min_QP = max(min_QP - 4, 0)
-        rc_var.stQp = rc_var.prevQp - 1  # cond5
+        rc_var.stQp = (rc_var.prevQp - 1)  # cond5
 
     elif cond6:
-        rc_var.stQp = rc_var.prevQp - 1
-
+        rc_var.stQp = (rc_var.prevQp - 1)
 
     # avoid increasing QP immediately after edge
     elif cond7:  ## DO QP increment logic
@@ -469,18 +476,18 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
         inc_cond1 = (curQp == rc_var.prev2Qp)
         inc_cond2 = ((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor))
         inc_cond3 = (rc_var.prev2Qp < curQp)
-        inc_cond4 = (((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) &
+        inc_cond4 = (((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) and
                      (curQp < pps.rc_quant_incr_limit0))
         inc_cond5 = (curQp < pps.rc_quant_incr_limit1)
 
-        case1 = (inc_cond1 & inc_cond2)
-        case2 = (inc_cond1 & (not inc_cond2))
-        case3 = ((not inc_cond1) & inc_cond3 & inc_cond4)
-        case4 = ((not inc_cond1) & inc_cond3 & (not inc_cond4))
-        case5 = ((not inc_cond1) & (not inc_cond3) & inc_cond5)
-        case6 = ((not inc_cond1) & (not inc_cond3) & (not inc_cond5))
+        case1 = ((inc_cond1) and (inc_cond2))
+        case2 = ((inc_cond1) and (not inc_cond2))
+        case3 = ((not inc_cond1) and (inc_cond3) and (inc_cond4))
+        case4 = ((not inc_cond1) and (inc_cond3) and (not inc_cond4))
+        case5 = ((not inc_cond1) and (not inc_cond3) and (inc_cond5))
+        case6 = ((not inc_cond1) and (not inc_cond3) and (not inc_cond5))
 
-        if (case1 or case3 or case5): rc_var.stQp = curQp + incr_amount
+        if (case1 or case3 or case5): rc_var.stQp = (curQp + incr_amount)
         if (case2 or case4 or case6): rc_var.stQp = curQp
 
     elif cond8:

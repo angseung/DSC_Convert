@@ -65,7 +65,7 @@ class initVlcVariables:
         self.rcSizeUnit = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         self.codedGroupSize = 0
         self.predictedSize = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
-        self.midpointSelected = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
+        self.midpointSelected = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.bool)
         self.forceMpp = 0
         #self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         ## REMOVED IN 2020.07.29 DEBUG #12

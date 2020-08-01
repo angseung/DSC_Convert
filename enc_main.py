@@ -72,7 +72,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts

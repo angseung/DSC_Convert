@@ -2,8 +2,10 @@ import numpy as np
 import os
 from PIL import Image
 from dsc_fifo import *
+PRINT_FUNC_CALL_OPT = True
 
 def addbits(vlc_var, FIFO, data, nbits):
+    if PRINT_FUNC_CALL_OPT: print("addbits has called!!")
     FIFO.fifo_put_bits(data, nbits)
     vlc_var.numBits += nbits
 
@@ -11,6 +13,7 @@ def addbits(vlc_var, FIFO, data, nbits):
 
 ## A function to write bits to ENC buffer from FIFO
 def putbits(val, size, buf):
+    if PRINT_FUNC_CALL_OPT: print("putbits has called!!")
 
     ## BIT WRITE TEST WAS SUCCESSFUL
     if (size > 32):
@@ -41,6 +44,7 @@ def putbits(val, size, buf):
 
 
 def getbits(size, buf, sign):
+    if PRINT_FUNC_CALL_OPT: print("getbits has called!!")
     outval = 0
 
     for i in range(size):
@@ -62,6 +66,7 @@ def getbits(size, buf, sign):
 # b_num = '0bxxxxx' format
 # returns integer format from binary format
 def bin2dec(b_num):
+    if PRINT_FUNC_CALL_OPT: print("bin2dec has called!!")
     b_num = list(b_num)
     value = 0
     for i in range(len(b_num)):
@@ -80,6 +85,7 @@ def bin2dec(b_num):
 # shift_dir = the direction of shift operation
 # example : 3 >> 2 is equal to bin_shift(3, 'right', 2)
 def bin_shift(int_num, shift_dir = 'right', shift_len = 0):
+    if PRINT_FUNC_CALL_OPT: print("bin_shift has called!!")
     b_num = bin(int_num)
     b_num = list(b_num)
     if shift_dir == 'right':
@@ -103,6 +109,7 @@ def bin_shift(int_num, shift_dir = 'right', shift_len = 0):
 
 
 def ceil_log2(val):
+    if PRINT_FUNC_CALL_OPT: print("ceil_log2 has called!!")
     ret = 0
     x = val
     while (x):
@@ -112,10 +119,12 @@ def ceil_log2(val):
 
 
 def FILT3(a,b,c):
+    if PRINT_FUNC_CALL_OPT: print("FILT3 has called!!")
     return (a + 2 * b + c + 2) / 2
 
 
 def CLAMP(X, MIN, MAX):
+    if PRINT_FUNC_CALL_OPT: print("CLAMP has called!!")
     if X > MAX:
         return MAX
     elif X < MIN:
@@ -125,10 +134,12 @@ def CLAMP(X, MIN, MAX):
 
 
 def QuantDivisor(a):
+    if PRINT_FUNC_CALL_OPT: print("QuantDivisor has called!!")
     arr = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
     return arr[a]
 
 
 def QuantOffset(a):
+    if PRINT_FUNC_CALL_OPT: print("QuantOffset has called!!")
     arr = [0, 0, 1, 3,  7, 15, 31,  63, 127, 255,  511, 1023, 2047, 4095,  8191, 16383, 32767]
     return arr[a]

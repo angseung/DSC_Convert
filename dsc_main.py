@@ -49,7 +49,7 @@ user_options['bits_per_pixel'] = 8 << 4  # 4-bits Fractional
 user_options["pic_width"] = im.width
 user_options["pic_height"] = im.height
 user_options["slice_width"] = 1920 # 480 default
-user_options["slice_height"] = 108 # 108 default
+user_options["slice_height"] = 4 # 108 default
 
 ##################################################################################
 pps = initPps()

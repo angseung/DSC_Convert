@@ -1,6 +1,7 @@
 import numpy as np
 from init_pps_params import initPps
 PRINT_DEBUG_OPT = 1
+PRINT_FUNC_CALL_OPT = True
 
 class DSCBuffer():
 
@@ -27,6 +28,7 @@ class DSCBuffer():
 
 ## Write a .DSC formatted file
 def write_dsc_data(path, buf, pps):
+    if PRINT_FUNC_CALL_OPT: print("currline_to_pic has called!!")
     slices_per_line = int(pps.pic_width / pps.slice_width)
     current_idx = np.zeros([slices_per_line, 1], dtype = np.int32)
     # total_byte = 0

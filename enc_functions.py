@@ -4,10 +4,12 @@ from dsc_utils import *
 from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, initPredVariables, \
     initRcVariables, initVlcVariables
 
-PRINT_DEBUG_OPT = True
+PRINT_DEBUG_OPT = False
+PRINT_FUNC_CALL_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
+    if PRINT_FUNC_CALL_OPT: print("currline_to_pic has called!!")
     xs = pic_val.xs
     ## need to modify each axis
     currLine_t = (currLine[0 : dsc_const.numComponents, 0 : defines.PADDING_LEFT]).transpose([1, 0])
@@ -17,18 +19,21 @@ def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
 
 
 def PopulateOrigLine(pps, dsc_const, hPos, vPos, pic):
+    if PRINT_FUNC_CALL_OPT: print("PopulateOrigLine has called!!")
     width = dsc_const.sliceWidth
 
     return (pic[hPos : hPos + width, vPos, :]).transpose(1, 0)
 
 
 def isFlatnessInfoSent(pps, rc_var):
+    if PRINT_FUNC_CALL_OPT: print("isFlatnessInfoSent has called!!")
     is_flat_signaled = int((rc_var.masterQp >= pps.flatness_min_qp) and (rc_var.masterQp <= pps.flatness_max_qp))
 
     return is_flat_signaled
 
 
 def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel):
+    if PRINT_FUNC_CALL_OPT: print("isOrigFlatHIndex has called!!")
     fc1_start = 0
     fc1_end = 4
     fc2_start = 1
@@ -69,11 +74,12 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
             if (not is_veryflat_failed):
                 t1_very_flat = False
 
-        test2_condition = (not (t1_very_flat or t1_somewhat_flat))
+        # test2_condition = (not (t1_very_flat or t1_somewhat_flat))
+        test2_condition = ((t1_somewhat_flat == False) and (t1_very_flat == False))
 
         # Left adjacent isn't flat, but current group & group to the right is flat
         #### Flat Test 2
-        if (test2_condition and (not (is_check_skip))):
+        if (test2_condition):
             for cpnt in range(define.NUM_COMPONENTS):
                 # vf_thresh = pps.flatness_det_thresh
                 max_val = -1
@@ -81,11 +87,14 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
                 for j in range(fc2_start, fc2_end):
                     # pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                    ## TODO : fix origline out of bound problem in flatness test 2...
+                    ## Implemented temporarily pass keyword...
+                    ##
                     try:
                         pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
 
                     except:
-                        a = 0
+                        pass
 
                     if (max_val < pixel_val): max_val = pixel_val
                     if (min_val > pixel_val): min_val = pixel_val
@@ -117,6 +126,7 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
 ########### TODO hPos is not accurate
 def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
+    if PRINT_FUNC_CALL_OPT: print("flatnessAdjustment has called!!")
     pixelsInGroup = 3
     supergroup_cnt = groupCount % define.GROUPS_PER_SUPERGROUP
     flatness_index = hPos + pixelsInGroup * define.GROUPS_PER_SUPERGROUP
@@ -176,6 +186,7 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
 
 
 def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
+    if PRINT_FUNC_CALL_OPT: print("calc_fullness_offset has called!!")
     unity_scale = 1 << (define.RC_SCALE_BINARY_POINT)
     throttleFrac = 0  # from throttleFrac in dscstate structure
 
@@ -282,6 +293,7 @@ def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc
 
 
 def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
+    if PRINT_FUNC_CALL_OPT: print("rate_control has called!!")
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
@@ -451,8 +463,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
     cond5 = (rc_var.rcSizeGroup == define.UNITS_PER_GROUP)
     cond6 = (rc_var.rcSizeGroup < tgtMinusOffset)
     # & (vlc_var.codedGroupSize < tgtMinusOffset))
-    cond7 = ((rc_var.bufferFullness >= 64) and
-             (vlc_var.codedGroupSize > tgtPlusOffset))
+    cond7 = ((rc_var.bufferFullness >= 64) and (vlc_var.codedGroupSize > tgtPlusOffset))
     cond8 = (not cond7)
     ##########################################
 
@@ -520,6 +531,7 @@ def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var,
 
 
 def FindResidualSize(eq):
+    if PRINT_FUNC_CALL_OPT: print("FindResidualSize has called!!")
     if (eq == 0):
         size_e = 0
     elif (-1 <= eq <= 0):
@@ -565,6 +577,7 @@ def FindResidualSize(eq):
 
 
 def MaxResidualSize(pps, dsc_const, cpnt, qp):
+    if PRINT_FUNC_CALL_OPT: print("MaxResidualSize has called!!")
     """
     :param pps: is_native_420, is_dsc_version_minor
     :param dsc_const: cpntBitDepth[cpnt], quantTableLuma[qp], quantTableChroma[qp]
@@ -575,6 +588,7 @@ def MaxResidualSize(pps, dsc_const, cpnt, qp):
 
 
 def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
+    if PRINT_FUNC_CALL_OPT: print("FindMidpoint has called!!")
     """
     :param cpntBitDepth[cpnt]:
     :param qlevel:
@@ -589,6 +603,7 @@ def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
 
 
 def QuantizeResidual(err, qlevel):
+    if PRINT_FUNC_CALL_OPT: print("QuantizeResidual has called!!")
     """
     :param err:
     :param qlevel:
@@ -608,6 +623,7 @@ def QuantizeResidual(err, qlevel):
 
 
 def MapQpToQlevel(pps, dsc_const, qp, cpnt):
+    if PRINT_FUNC_CALL_OPT: print("MapQpToQlevel has called!!")
     """
     :param pps: is_native_420, is_dsc_version_minor
     :param dsc_const: cpntBitDepth[0, 1], quantTableLuma[qp], quantTableChroma[qp]
@@ -634,6 +650,7 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
 
 def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
                   qLevel, cpntBitDepth):
+    if PRINT_FUNC_CALL_OPT: print("SamplePredict has called!!")
     # TODO h_offset_array_idx is equal to group count value
     # hPos = (0,1,2 -> 0) (3,4,5 -> 3) (6,7,8 -> 6) (9,10,11 -> 9)
     h_offset_array_idx = int(hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT + defines.PADDING_LEFT
@@ -699,6 +716,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
 # output : pred_var
 def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt, mapQLevel,
                    maxResSize, qp):
+    if PRINT_FUNC_CALL_OPT: print("PredictionLoop has called!!")
     """
     This function iterates for each unit (Y in first unit, Co in second unit, ...)
     :param pred_var: Main output of this function
@@ -798,6 +816,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 ## TODO check hPos and cpnt dependency (to parallelize computations)
 ## TODO can it be processed in every pixel-level? (Problem = predicted value is selected after VLC)
 def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
+    if PRINT_FUNC_CALL_OPT: print("BlockPredSearch has called!!")
     ################ Initial variables ###############
     min_bp_vector = 3
     max_bp_vector = 10
@@ -923,6 +942,7 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
 
 
 def IsForceMpp(pps, dsc_const, rc_var):
+    if PRINT_FUNC_CALL_OPT: print("IsForceMpp has called!!")
     maxBitsPerGroup = (dsc_const.pixelsInGroup * pps.bits_per_pixel + 15) >> 4
     adjFullness = rc_var.bufferFullness
 
@@ -941,6 +961,7 @@ def IsForceMpp(pps, dsc_const, rc_var):
 
 def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
              FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size):
+    if PRINT_FUNC_CALL_OPT: print("VLCGroup has called!!")
     ######################### Declare variables #########################
     start_fullness = np.zeros(dsc_const.numSsps, ).astype(np.int32)
     max_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
@@ -1142,6 +1163,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
 
 def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
+    if PRINT_FUNC_CALL_OPT: print("RemoveBitsEncoderBuffer has called!!")
     ## Function to remove one pixel's worth of bits from the encoder buffer model
     ## 6.8.1 section
     ## "chunkPixelTimes" is hPos + dsc_cfg->initial_xmit_delay (=512)
@@ -1165,6 +1187,7 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
 
 
 def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
+    if PRINT_FUNC_CALL_OPT: print("ProcessGroupEnc has called!!")
     for i in range(pps.numSsps):
 
         if (Shifters[i].fullness < dsc_const.maxSeSize[i]):
@@ -1208,6 +1231,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
             max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
+    if PRINT_FUNC_CALL_OPT: print("VLCunit has called!!")
     ################################ Insert flat flag ####################################
     if ((unit == 0) and ((groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3) and (flat_var.IsQpWithinFlat)):
 
@@ -1265,6 +1289,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
 
 def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_mode, bits_p_mode, bits_ich_mode):
+    if PRINT_FUNC_CALL_OPT: print("IchDecision has called!!")
     ############# Error for each mode  ############
     log_err_p_mode = 0
     log_err_ich_mode = 0
@@ -1291,6 +1316,7 @@ def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_m
 
 
 def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
+    if PRINT_FUNC_CALL_OPT: print("UseICHistory has called!!")
     if defines.ICH_BITS == 0:
         return
 
@@ -1308,6 +1334,7 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
 
 
 def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
+    if PRINT_FUNC_CALL_OPT: print("UpdateMidPoint has called!!")
     mod_hPos = hPos - dsc_const.pixelsInGroup + 1
     for i in range(defines.SAMPLES_PER_UNIT):
         if mod_hPos + i <= pps.slice_width - 1:
@@ -1317,6 +1344,7 @@ def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
 
 
 def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first_line_flag, is_odd_line):
+    if PRINT_FUNC_CALL_OPT: print("HistoryLookup has called!!")
     reserved = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
     read_pixel = np.zeros(defines.NUM_COMPONENTS, )
     prevline_index = entry - reserved
@@ -1357,16 +1385,17 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
 
 
 def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig, prevLine):
+    if PRINT_FUNC_CALL_OPT: print("IsErrorPassWithBestHistory has called!!")
     if sampModCnt == 0:
         ich_var.origWithinQerr = 1  # Reset wit no error
 
     max_qerr = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
 
     lowest_sad = 2 ** 30
-    first_line_flag = (vPos == 0 or (pps.native_420 and vPos == 1))
+    first_line_flag = ((vPos == 0) or (pps.native_420 and vPos == 1))
     ich_var.ichLookup[sampModCnt] = 99
 
-    ich_prevline_start = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
+    ich_prevline_start = (defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE)
     ich_prevline_end = defines.ICH_SIZE
 
     if ((hPos == 0) and (vPos == 0)):
@@ -1436,6 +1465,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
 
 
 def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, recon):
+    if PRINT_FUNC_CALL_OPT: print("UpdateHistoryElement has called!!")
     first_line_flag = vPos == 0 or (pps.native_420 and vPos == 1)
     read_pixel = np.array(4, )
     # 32 or 25 (=32-7)
@@ -1477,6 +1507,7 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
 
 
 def SampToLineBuf(dsc_const, pps, cpnt, x):
+    if PRINT_FUNC_CALL_OPT: print("SampToLineBuf has called!!")
     ## Line Storage (6.3)
     ## Allocate Storage to Store Reconstructed Pixel Value
     shift_amount = max(dsc_const.cpntBitDepth[cpnt] - pps.line_buf_depth, 0)

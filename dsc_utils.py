@@ -143,3 +143,28 @@ def QuantOffset(a):
     if PRINT_FUNC_CALL_OPT: print("QuantOffset has called!!")
     arr = [0, 0, 1, 3,  7, 15, 31,  63, 127, 255,  511, 1023, 2047, 4095,  8191, 16383, 32767]
     return arr[a]
+
+def rgb2ycocg(pps, im):
+    im_yuv = np.zeros(im.shape, dtype = np.uint32)
+    half = 1 << (pps.bitsPerPixel - 1)
+    r = 0
+    g = 1
+    b = 2
+
+    for xs in range(pps.pic_height): # 1080
+        for ys in range(pps.pic_width): # 1920
+            co = (im[xs, ys, r] - im[xs, ys, b]).item()
+            t = (im[xs, ys, b]).item() + (co >> 1)
+            cg = (im[xs, ys, g]).item() - t
+            y = t + (cg >> 1)
+
+            if (pps.bitsPerPixel == 16):
+                raise NotImplemented
+
+            else:
+                co = co + 2 * half
+                cg = cg + 2 * half
+
+            im_yuv[xs, ys, :] = [y, co, cg]
+
+    return im_yuv

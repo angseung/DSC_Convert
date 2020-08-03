@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from dsc_enc_buf import DSCBuffer ,write_dsc_data
 from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, \
     initPredVariables, initRcVariables, initVlcVariables, PicPosition
+from dsc_utils import rgb2ycocg
 
 IMAGE_DEBUG_OPT = False
 dsc_path = "w1.dsc"
@@ -17,26 +18,14 @@ dsc_path = "w1.dsc"
 image_path = "w1.ppm"
 im = Image.open(image_path)
 
-im_rgb = np.array(im)
-im_yub = np.array(im.convert("YCbCr"))
-
-###### Make Y Co Cg #######
-if (im.mode) == 'RGB':
-    im = im.convert("YCbCr")
-
-elif (im.mode) == 'YCbCr':
-    pass
-
-else:
-    raise ValueError("Input Image MUST RGB or YCbCr format!!")
-
 ##################################################################################
 ############################ORIGINAL PIXEL DATA###################################
 ##################################################################################
-orig_pixel = np.array(im) # (pic_width, pic_height, num_component) shape ndarray
-orig_pixel = orig_pixel.transpose([1, 0, 2])
+orig_pixel_rgb = np.array(im) # (pic_width, pic_height, num_component) shape ndarray
+orig_pixel = np.zeros(orig_pixel_rgb.shape)
+# orig_pixel = orig_pixel.transpose([1, 0, 2])
 
-output_pic = np.zeros(orig_pixel.shape, dtype = np.int32)
+output_pic = np.zeros(orig_pixel.shape, dtype = np.int32).transpose([1, 0, 2])
 ##################################################################################
 
 ################ configuration constants ################
@@ -71,6 +60,18 @@ pic_val = PicPosition()
 # enc_var = initVlcVariables(defines)
 # rc_var = initRcVariables()
 
+###### Color Space Conversion - Make Y Co Cg #######
+if (im.mode) == 'RGB':
+    # im = im.convert("YCbCr")
+    orig_pixel = rgb2ycocg(pps, orig_pixel_rgb)
+    orig_pixel = orig_pixel.transpose([1, 0, 2])
+
+elif (im.mode) == 'YCbCr':
+    pass
+
+else:
+    raise ValueError("Input Image MUST RGB or YCbCr format!!")
+
 slices_per_line = int((pps.pic_width + pps.slice_width - 1) / pps.slice_width)
 encoded_buf_size = pps.chunk_size * pps.slice_height
 encoded_buf = np.zeros([slices_per_line, encoded_buf_size], dtype = np.int32)
@@ -84,7 +85,7 @@ for ys in range(0, pps.pic_height, pps.slice_height):
 
     # One sliced line
     for xs in range(0, pps.pic_width, pps.slice_width):
-        print("PROCESSING PIC POSITION : [%04d] [%04d]" %(xs, ys))
+        # print("PROCESSING PIC POSITION : [%04d] [%04d]" %(xs, ys))
         ##### Store current position in this loop for debuging...
         pic_val.set_pos(xs, ys)
         ####### Slicing the picture #######

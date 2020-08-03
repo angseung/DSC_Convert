@@ -105,7 +105,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
-        [actual_x, recon_x] = PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
+        PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
                                              mapQLevel, maxResSize, rc_var.masterQp)
 
         #################### P or ICH Selection ###################

@@ -12,7 +12,9 @@ def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
     if PRINT_FUNC_CALL_OPT: print("currline_to_pic has called!!")
     xs = pic_val.xs
     ## need to modify each axis
-    currLine_t = (currLine[0 : dsc_const.numComponents, 0 : defines.PADDING_LEFT]).transpose([1, 0])
+    # currLine_t = (currLine[0 : dsc_const.numComponents, 0 : defines.PADDING_LEFT]).transpose([1, 0])
+    currLine_t = (currLine[0: dsc_const.numComponents, defines.PADDING_LEFT : ])
+    currLine_t = currLine_t.transpose([1, 0])
     op[xs: xs + pps.slice_width, vPos, :] = currLine_t
 
     return op
@@ -55,7 +57,7 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
         for cpnt in range(dsc_const.numComponents):
             max_val = -1
             min_val = 99999
-            #print(currLine.shape, cpnt)
+            # print(currLine.shape, cpnt)
 
             for i in range(fc1_start, fc1_end):
                 #if PRINT_DEBUG_OPT: print("CURRENT hPos is %d, i is %d" %(hPos, i))
@@ -738,9 +740,11 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         if (vPos == 0):
             pred2use = defines.PT_LEFT  # PT_LEFT is selected only at first line
+
         else:
             #### TODO modify pred_var.prevLinePred[] to be short variable
-            pred2use = pred_var.prevLinePred[sampModCnt]
+            # pred2use = pred_var.prevLinePred[sampModCnt]
+            pred2use = pred_var.prevLinePred[int(hPos/(defines.PRED_BLK_SIZE))]
 
         if (pps.native_420):
             ####### TODO native_420 mode
@@ -796,7 +800,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
         #### PIXEL VAL DEBUG....####
-        print("[%d] [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, actual_x, recon_x))
+        print("[%d] [%d] cpnt : [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, cpnt, actual_x, recon_x))
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)
@@ -823,8 +827,6 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
 
-        return [actual_x, recon_x]
-
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)
 ## TODO can it be processed in every pixel-level? (Problem = predicted value is selected after VLC)
@@ -845,7 +847,7 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
         max_cpnt = 1
 
     ################ Reset variables ###############
-    if hPos == 0:
+    if (hPos == 0):
         pred_var.bpCount = 0  ## TODO new variable
         pred_var.lastEdgeCount = 10  # Arbitrary large value as initial condition  ## TODO new variable
         pred_var.lastErr[:, :, :] = 0

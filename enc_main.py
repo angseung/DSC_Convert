@@ -158,12 +158,11 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)
 
             ########### Update ICH pixels ############
-            if ((not (defines.ICH_BITS == 0)) and (hPos < (pps.slice_width - 1))): ## Skip the Update ICH of the last group
+            if ((not (defines.ICH_BITS == 0)) and (hPos < (dsc_const.sliceWidth - 1))): ## Skip the Update ICH of the last group
                 mod_hPos = (hPos - 2)
 
                 ich_p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
                 for i in range(dsc_const.pixelsInGroup):
-
                     for cpnt in range(dsc_const.numComponents):
                         ich_p[cpnt] = currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT]
 
@@ -172,12 +171,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ########### Predict MMAP vs BP for the next line ############
             for mod_hPos in range(hPos - 2, hPos + 1):
                 for cpnt in range(dsc_const.numComponents):
-                    BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos)
+                    BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, mod_hPos) ## Modified from hPos to mod_hPos
 
             ########### Store reconstructed value in prevLineBuf (double buffer) ############
             for mod_hPos in range(hPos - 2 + defines.PADDING_LEFT, hPos + 1 + defines.PADDING_LEFT):
 
                 for cpnt in range(dsc_const.numComponents):
+
                     if ((pps.native_420) and (cpnt == dsc_const.numComponents - 1)):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])

@@ -141,7 +141,7 @@ def QuantDivisor(a):
 
 def QuantOffset(a):
     if PRINT_FUNC_CALL_OPT: print("QuantOffset has called!!")
-    arr = [0, 0, 1, 3,  7, 15, 31,  63, 127, 255,  511, 1023, 2047, 4095,  8191, 16383, 32767]
+    arr = [0, 0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767]
     return arr[a]
 
 def rgb2ycocg(pps, im):

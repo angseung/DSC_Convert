@@ -665,11 +665,11 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
     h_offset_array_idx = int(hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT + defines.PADDING_LEFT
     #if PRINT_DEBUG_OPT: print("[cpnt : %d] Current [h_offset_array_idxis %d], [hPos is %d]" %(cpnt, h_offset_array_idx, hPos))
     # organize samples into variable array defined in dsc spec
-    c = prevLine[cpnt, h_offset_array_idx - 1]
-    b = prevLine[cpnt, h_offset_array_idx]
-    d = prevLine[cpnt, h_offset_array_idx + 1]
-    e = prevLine[cpnt, h_offset_array_idx + 2]
-    a = currLine[cpnt, h_offset_array_idx - 1]
+    c = prevLine[cpnt, h_offset_array_idx - 1].item()
+    b = prevLine[cpnt, h_offset_array_idx].item()
+    d = prevLine[cpnt, h_offset_array_idx + 1].item()
+    e = prevLine[cpnt, h_offset_array_idx + 2].item()
+    a = currLine[cpnt, h_offset_array_idx - 1].item()
 
     filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2], prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx])
     filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1])
@@ -692,10 +692,13 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
 
     elif (predType == defines.PT_MAP):  # MMAP
         diff = CLAMP(filt_c - c, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
+
         if (hPos < defines.SAMPLES_PER_UNIT):
             blend_c = a
+
         else:
             blend_c = c + diff
+
         diff = CLAMP(filt_b - b, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
         blend_b = b + diff
         diff = CLAMP(filt_d - d, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
@@ -717,7 +720,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
 
     else:  # Block prediction
         bp_offset = predType - defines.PT_BLOCK
-        p = currLine[max(hPos + defines.PADDING_LEFT - 1 - bp_offset, 0)]
+        p = (currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - bp_offset, 0)]).item()
 
     return p
 
@@ -744,7 +747,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         else:
             #### TODO modify pred_var.prevLinePred[] to be short variable
             # pred2use = pred_var.prevLinePred[sampModCnt]
-            pred2use = pred_var.prevLinePred[int(hPos/(defines.PRED_BLK_SIZE))]
+            pred2use = pred_var.prevLinePred[int(hPos/(defines.PRED_BLK_SIZE))].item()
 
         if (pps.native_420):
             ####### TODO native_420 mode
@@ -835,15 +838,15 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
     ################ Initial variables ###############
     min_bp_vector = 3
     max_bp_vector = 10
-    pixel_mod_cnt = hPos % defines.PRED_BLK_SIZE
+    pixel_mod_cnt = (hPos % defines.PRED_BLK_SIZE)
     cursamp = int(hPos / defines.PRED_BLK_SIZE) % defines.BP_SIZE
     ref_value = 1 << (dsc_const.cpntBitDepth[cpnt] - 1)
-    max_cpnt = dsc_const.numComponents - 1
+    max_cpnt = (dsc_const.numComponents - 1)
     bp_sads = (np.zeros(defines.BP_RANGE, )).astype(np.int32)
 
     if (pps.native_420):
         if (cpnt > 1):
-            return
+            return ## BP Prohibited Condition...
         max_cpnt = 1
 
     ################ Reset variables ###############
@@ -858,32 +861,35 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
         #             # 3-pixel SAD's for each of the past 3 3-pixel-wide prediction blocks for each BP offset
         #             pred_var.lastErr[i][j][candidate_vector] = 0  ## TODO new variable
 
-    if pixel_mod_cnt == 0:
+    if (pixel_mod_cnt == 0):
         for candidate_vector in range(defines.BP_RANGE):
             # predErr is summed over PRED_BLK_SIZE pixels
             pred_var.predErr[cpnt, candidate_vector] = 0
 
     ################ Does edge detected? detection process ###############
     ### TODO Executed every pixel-level
-    recon_x = currLine[cpnt, hPos + defines.PADDING_LEFT]
+    recon_x = currLine[cpnt, hPos + defines.PADDING_LEFT].item()
 
-    if hPos == 0:
+    if (hPos == 0):
         # midpoint pixel value
-        prev_recon_x = ref_value
+        pixdiff = (recon_x - ref_value)
+
     else:
         # CurrentSample - LeftSample
-        prev_recon_x = currLine[cpnt, hPos + defines.PADDING_LEFT - 1]
+        pixdiff = (recon_x - currLine[cpnt, hPos + defines.PADDING_LEFT - 1].item())
 
-    pixdiff = abs(recon_x - prev_recon_x)
+    pixdiff = abs(pixdiff)
 
-    if cpnt == 0:
+    if (cpnt == 0):
         pred_var.edgeDetected = 0  ### Reset edgeDetected
-    if pixdiff > (defines.BP_EDGE_STRENGTH << (pps.bits_per_component - 8)):
+
+    if (pixdiff > (defines.BP_EDGE_STRENGTH << (pps.bits_per_component - 8))): #Edge Occur Condition
         pred_var.edgeDetected = 1  ### Edge is detected
 
-    if cpnt == max_cpnt:  ### at the last component
+    if (cpnt == max_cpnt):  ### at the last component
         if pred_var.edgeDetected:
             pred_var.lastEdgeCount = 0
+
         else:
             pred_var.lastEdgeCount += 1  # edge is not detected at this pixel
 
@@ -893,14 +899,14 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
     # THIS VALUE -1 -2 -3 -4 -5 -6 -7 -8 -9 -10 -11 -12 -13
     for candidate_vector in range(defines.BP_RANGE):
 
-        if hPos > candidate_vector:
+        if (hPos > candidate_vector):
             # currLine[-1] ~ currLine[-13]
-            pred_x = currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - candidate_vector, 0)]
+            pred_x = currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - candidate_vector, 0)].item()
         else:
             pred_x = ref_value
 
         pixdiff = abs(recon_x - pred_x)
-        modified_abs_diff = min(pixdiff >> (dsc_const.cpntBitDepth[cpnt] - 7), 0x3f)  # 6-bits
+        modified_abs_diff = min(pixdiff >> (dsc_const.cpntBitDepth[cpnt].item() - 7), 0x3f)  # 6-bits
         # predErr is 8-bits
         pred_var.predErr[cpnt, candidate_vector] += modified_abs_diff
 
@@ -930,28 +936,30 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
                     bp_sads[candidate_vector] += sad3x1  # 11-bit SAD (3 times of 9-bits)
                 # Each bp_sad can have a max value of 63*9 pixels * 3 components = 1701 or 11 bits
 
-                bp_sads[candidate_vector] = bp_sads.item(candidate_vector) >> 3  # SAD is truncated to 8-bit for comparison
+                bp_sads[candidate_vector] = ((bp_sads[candidate_vector].item()) >> 3)  # SAD is truncated to 8-bit for comparison
 
-            min_err = bp_sads[0]
+            min_err = bp_sads[0].item()
             min_pred = defines.PT_MAP
 
             # candidate_vector 3 ~ 9
-            for candidate_vector in range(min_bp_vector, max_bp_vector):
+            for candidate_vector in range((min_bp_vector - 1), max_bp_vector):
                 # Ties favor smallest vector
-                if (min_err > bp_sads[candidate_vector]):
-                    min_err = bp_sads[candidate_vector]
+                if (min_err > bp_sads[candidate_vector].item()):
+                    min_err = bp_sads[candidate_vector].item()
                     min_pred = candidate_vector + defines.PT_BLOCK
 
             # Don't start algorithm until 10th pixel
-            if pps.block_pred_enable and hPos >= 9:
-                if min_pred > defines.PT_BLOCK:
+            if ((pps.block_pred_enable) and (hPos >= 9)):
+                if (min_pred > defines.PT_BLOCK):
                     pred_var.bpCount += 1
+
                 else:
                     pred_var.bpCount = 0
 
             # BP is choosen in this condition
             if ((pred_var.bpCount >= 3) and (pred_var.lastEdgeCount < defines.BP_EDGE_COUNT)):
                 pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = min_pred
+
             else:
                 pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = defines.PT_MAP
 

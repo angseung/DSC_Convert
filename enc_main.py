@@ -105,8 +105,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
-        PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
-                       mapQLevel, maxResSize, rc_var.masterQp)
+        [actual_x, recon_x] = PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
+                                             mapQLevel, maxResSize, rc_var.masterQp)
 
         #################### P or ICH Selection ###################
         ###################### ICH operation ######################
@@ -122,7 +122,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         if ((sampModCnt == 2) or (hPos == (dsc_const.sliceWidth - 1))):
             ## Last Pixel in a Group "OR" Outbound pixel outside of slice
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
-            flatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
+            FlatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
             if (sampModCnt < 2):
 
@@ -187,7 +187,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
 
             ################################## Rate controller  #############################
-            [rc_var.currentScale, rc_var.rcXformOffset] = calc_fullness_offset(vPos, pixelCount,
+            [rc_var.currentScale, rc_var.rcXformOffset] = CalcFullnessOffset(vPos, pixelCount,
                                                                                groupCnt, pps, defines, dsc_const, vlc_var, rc_var)
             groupCnt += 1 ## TODO groupCnt increase timing
             ############################### From RateControl Func...
@@ -200,7 +200,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
 
-            rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
+            RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
 
             ## masterQp decision is done in Rate Control function...
             # rc_var.masterQp = rc_var.prevQp

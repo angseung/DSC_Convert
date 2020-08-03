@@ -27,7 +27,7 @@ def PopulateOrigLine(pps, dsc_const, hPos, vPos, pic):
 
 def isFlatnessInfoSent(pps, rc_var):
     if PRINT_FUNC_CALL_OPT: print("isFlatnessInfoSent has called!!")
-    is_flat_signaled = int((rc_var.masterQp >= pps.flatness_min_qp) and (rc_var.masterQp <= pps.flatness_max_qp))
+    is_flat_signaled = ((rc_var.masterQp >= pps.flatness_min_qp) and (rc_var.masterQp <= pps.flatness_max_qp))
 
     return is_flat_signaled
 
@@ -77,6 +77,9 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
         # test2_condition = (not (t1_very_flat or t1_somewhat_flat))
         test2_condition = ((t1_somewhat_flat == False) and (t1_very_flat == False))
 
+        # if (not test2_condition):
+        #     a = 0
+
         # Left adjacent isn't flat, but current group & group to the right is flat
         #### Flat Test 2
         if (test2_condition):
@@ -99,8 +102,8 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
                     if (max_val < pixel_val): max_val = pixel_val
                     if (min_val > pixel_val): min_val = pixel_val
 
-                is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
-                is_veryflat_failed = (max_val - min_val) > vf_thresh
+                is_somewhatflat_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
+                is_veryflat_failed = ((max_val - min_val) > vf_thresh)
 
                 if not is_somewhatflat_falied:
                     t2_somewhat_flat = False
@@ -125,11 +128,11 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
 
 ########### TODO hPos is not accurate
-def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
-    if PRINT_FUNC_CALL_OPT: print("flatnessAdjustment has called!!")
+def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
+    if PRINT_FUNC_CALL_OPT: print("FlatnessAdjustment has called!!")
     pixelsInGroup = 3
-    supergroup_cnt = groupCount % define.GROUPS_PER_SUPERGROUP
-    flatness_index = hPos + pixelsInGroup * define.GROUPS_PER_SUPERGROUP
+    supergroup_cnt = (groupCount % define.GROUPS_PER_SUPERGROUP)
+    flatness_index = hPos + (pixelsInGroup * define.GROUPS_PER_SUPERGROUP)
 
     if (supergroup_cnt == 0):
         flat_var.flatnessCnt = 0
@@ -141,6 +144,7 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
 
     if (flat_var.flatnessMemory[flat_var.flatnessCnt] > 0):  # If determined as flat
         flat_var.flatnessCnt += 1
+
     flat_var.IsQpWithinFlat = isFlatnessInfoSent(pps, rc_var)
 
     if (supergroup_cnt == 0):
@@ -150,6 +154,7 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
     if ((supergroup_cnt == 3) and flat_var.IsQpWithinFlat):
         if (flat_var.firstFlat >= 0):
             flat_var.prevWasFlat = 1
+
         else:
             flat_var.prevWasFlat = 0
 
@@ -177,16 +182,17 @@ def flatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
         flat_var.flatnessType = 1
 
     if (flat_var.origIsFlat and (rc_var.masterQp < pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][1])):
-        if ((flat_var.flatnessType == 0) or rc_var.masterQp < define.SOMEWHAT_FLAT_QP_DELTA):  # Somewhat flat
+        if ((flat_var.flatnessType == 0) or rc_var.masterQp < define.SOMEWHAT_FLAT_QP_THRESH):  # Somewhat flat
             rc_var.stQp = max(rc_var.stQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
             rc_var.prevQp = max(rc_var.prevQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
+
         else:  # very flat
             rc_var.stQp = define.VERY_FLAT_QP
             rc_var.prevQp = define.VERY_FLAT_QP
 
 
-def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
-    if PRINT_FUNC_CALL_OPT: print("calc_fullness_offset has called!!")
+def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
+    if PRINT_FUNC_CALL_OPT: print("CalcFullnessOffset has called!!")
     unity_scale = 1 << (define.RC_SCALE_BINARY_POINT)
     throttleFrac = 0  # from throttleFrac in dscstate structure
 
@@ -292,8 +298,8 @@ def calc_fullness_offset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc
     return [rc_var.currentScale, rc_var.rcXformOffset]
 
 
-def rate_control(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
-    if PRINT_FUNC_CALL_OPT: print("rate_control has called!!")
+def RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
+    if PRINT_FUNC_CALL_OPT: print("RateControl has called!!")
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
@@ -789,6 +795,9 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         maxval = (1 << dsc_const.cpntBitDepth[cpnt]) - 1
         recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
+        #### PIXEL VAL DEBUG....####
+        print("[%d] [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, actual_x, recon_x))
+
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)
         else:
@@ -803,6 +812,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_mid)
+
         else:
             absErr = abs(actual_x - recon_mid) >> (pps.bits_per_component - 8)
         ######### Save mid recon error #######
@@ -812,6 +822,8 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         #######################################################################
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
+
+        return [actual_x, recon_x]
 
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)

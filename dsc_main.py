@@ -13,13 +13,20 @@ IMAGE_DEBUG_OPT = False
 dsc_path = "w1.dsc"
 # full_picture = get_XXXX()
 ###### Get picture  #######
-image_path = "w1.jpeg"
+# image_path = "w1.jpeg"
+image_path = "w1.ppm"
 im = Image.open(image_path)
+
+im_rgb = np.array(im)
+im_yub = np.array(im.convert("YCbCr"))
+
 ###### Make Y Co Cg #######
 if (im.mode) == 'RGB':
     im = im.convert("YCbCr")
+
 elif (im.mode) == 'YCbCr':
     pass
+
 else:
     raise ValueError("Input Image MUST RGB or YCbCr format!!")
 
@@ -49,7 +56,7 @@ user_options['bits_per_pixel'] = 8 << 4  # 4-bits Fractional
 user_options["pic_width"] = im.width
 user_options["pic_height"] = im.height
 user_options["slice_width"] = 1920 # 480 default
-user_options["slice_height"] = 4 # 108 default
+user_options["slice_height"] = 108 # 108 default
 
 ##################################################################################
 pps = initPps()
@@ -77,7 +84,7 @@ for ys in range(0, pps.pic_height, pps.slice_height):
 
     # One sliced line
     for xs in range(0, pps.pic_width, pps.slice_width):
-        print("PROCESSING PIC POSITION : [%4d] [%4d]" %(xs, ys))
+        print("PROCESSING PIC POSITION : [%04d] [%04d]" %(xs, ys))
         ##### Store current position in this loop for debuging...
         pic_val.set_pos(xs, ys)
         ####### Slicing the picture #######

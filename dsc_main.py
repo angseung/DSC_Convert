@@ -9,25 +9,28 @@ from dsc_enc_buf import DSCBuffer ,write_dsc_data
 from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, \
     initPredVariables, initRcVariables, initVlcVariables, PicPosition
 from dsc_utils import rgb2ycocg
+from matplotlib import image as mpimg
 
 IMAGE_DEBUG_OPT = False
 dsc_path = "w1.dsc"
 # full_picture = get_XXXX()
 ###### Get picture  #######
-# image_path = "w1.jpeg"
-image_path = "w1.ppm"
-im = Image.open(image_path)
+image_path = "w1.jpeg"
+# image_path = "w1.ppm"
+# im = Image.open(image_path)
+# im = mpimg.imread(image_path)
+orig_pixel_rgb = mpimg.imread(image_path)
 
 ##################################################################################
 ############################ORIGINAL PIXEL DATA###################################
 ##################################################################################
-orig_pixel_rgb = np.array(im) # (pic_width, pic_height, num_component) shape ndarray
-orig_pixel = np.zeros(orig_pixel_rgb.shape)
+# orig_pixel_rgb = np.array(im, dtype = np.uint32) # (pic_width, pic_height, num_component) shape ndarray
+# orig_pixel_rgb = orig_pixel_rgb.astype(np.uint32)
+orig_pixel = np.zeros(orig_pixel_rgb.shape, dtype = np.uint32)
 # orig_pixel = orig_pixel.transpose([1, 0, 2])
 
-output_pic = np.zeros(orig_pixel.shape, dtype = np.int32).transpose([1, 0, 2])
+output_pic = np.zeros(orig_pixel.shape, dtype = np.uint32).transpose([1, 0, 2])
 ##################################################################################
-
 ################ configuration constants ################
 user_options = {}
 user_options['dsc_version_major'] = 1
@@ -42,8 +45,10 @@ user_options['native_420'] = 0
 user_options['native_422'] = 0
 user_options['vbr_enable'] = 0
 user_options['bits_per_pixel'] = 8 << 4  # 4-bits Fractional
-user_options["pic_width"] = im.width
-user_options["pic_height"] = im.height
+# user_options["pic_width"] = im.width
+# user_options["pic_height"] = im.height
+user_options["pic_width"] = 1920
+user_options["pic_height"] = 1080
 user_options["slice_width"] = 1920 # 480 default
 user_options["slice_height"] = 108 # 108 default
 
@@ -61,7 +66,8 @@ pic_val = PicPosition()
 # rc_var = initRcVariables()
 
 ###### Color Space Conversion - Make Y Co Cg #######
-if (im.mode) == 'RGB':
+# if (im.mode == 'RGB'):
+if True:
     # im = im.convert("YCbCr")
     orig_pixel = rgb2ycocg(pps, orig_pixel_rgb)
     orig_pixel = orig_pixel.transpose([1, 0, 2])

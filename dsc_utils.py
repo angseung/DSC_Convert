@@ -153,18 +153,29 @@ def rgb2ycocg(pps, im):
 
     for xs in range(pps.pic_height): # 1080
         for ys in range(pps.pic_width): # 1920
-            co = (im[xs, ys, r] - im[xs, ys, b]).item()
+
+            if (ys > 110):
+                a = 100
+
+            co = (im[xs, ys, r].item() - im[xs, ys, b].item())
             t = (im[xs, ys, b]).item() + (co >> 1)
             cg = (im[xs, ys, g]).item() - t
             y = t + (cg >> 1)
 
             if (pps.bitsPerPixel == 16):
                 raise NotImplemented
+            ### Pixel Value Debug
+            if ((co >=256) or (cg >= 256) or (y >= 256)):
+                a = 10
 
             else:
                 co = co + 2 * half
                 cg = cg + 2 * half
 
             im_yuv[xs, ys, :] = [y, co, cg]
+
+            ## DEBUG ONLY
+            # a = [y, co, cg]
+            # a = 0
 
     return im_yuv

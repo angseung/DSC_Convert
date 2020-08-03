@@ -199,7 +199,6 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
-
             RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
 
             ## masterQp decision is done in Rate Control function...

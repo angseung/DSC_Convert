@@ -17,7 +17,7 @@ qlevel_chroma_16bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10,
 class initIchVariables:
     def __init__(self, defines):
         self.pixels = np.zeros((defines.NUM_COMPONENTS, defines.ICH_SIZE)).astype(np.int32)  ## Todo
-        self.valid = np.zeros(32).astype(np.int32)  ## Todo
+        self.valid = np.zeros(32, ).astype(np.bool)  ## Todo
         self.ichSelected = 0
         self.prevIchSelected = 0
         self.ichPixels = np.zeros((defines.MAX_PIXELS_PER_GROUP, defines.NUM_COMPONENTS)).astype(np.int32)

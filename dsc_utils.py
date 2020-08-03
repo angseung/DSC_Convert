@@ -2,7 +2,7 @@ import numpy as np
 import os
 from PIL import Image
 from dsc_fifo import *
-PRINT_FUNC_CALL_OPT = True
+PRINT_FUNC_CALL_OPT = False
 
 def addbits(vlc_var, FIFO, data, nbits):
     if PRINT_FUNC_CALL_OPT: print("addbits has called!!")

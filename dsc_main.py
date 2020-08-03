@@ -77,7 +77,7 @@ for ys in range(0, pps.pic_height, pps.slice_height):
 
     # One sliced line
     for xs in range(0, pps.pic_width, pps.slice_width):
-        print("CURRENT PIC POSITION : [%d] [%d]" %(xs, ys))
+        print("PROCESSING PIC POSITION : [%4d] [%4d]" %(xs, ys))
         ##### Store current position in this loop for debuging...
         pic_val.set_pos(xs, ys)
         ####### Slicing the picture #######

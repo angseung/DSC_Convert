@@ -5,7 +5,7 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
     initRcVariables, initVlcVariables
 
 PRINT_DEBUG_OPT = False
-PRINT_FUNC_CALL_OPT = True
+PRINT_FUNC_CALL_OPT = False
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -936,7 +936,7 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
                     pred_var.bpCount = 0
 
             # BP is choosen in this condition
-            if pred_var.bpCount >= 3 and pred_var.lastEdgeCount < defines.BP_EDGE_COUNT:
+            if ((pred_var.bpCount >= 3) and (pred_var.lastEdgeCount < defines.BP_EDGE_COUNT)):
                 pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = min_pred
             else:
                 pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = defines.PT_MAP
@@ -1302,6 +1302,7 @@ def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_m
 
         log_err_p_mode += ceil_log2(max_err_p_mode[i])
         log_err_ich_mode += ceil_log2(ich_var.maxIchError[i])
+
         if i == 0 and pps.dsc_version_minor == 1:
             log_err_p_mode <<= 1
             log_err_ich_mode <<= 1
@@ -1312,6 +1313,7 @@ def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_m
     if pps.dsc_version_minor == 2:
         if flat_var.flatnessCurPos == 2:
             decision = (log_err_ich_mode <= log_err_p_mode) and (ich_mode_cost < p_mode_cost)
+
         else:
             decision = ich_mode_cost < p_mode_cost
     else:
@@ -1341,8 +1343,10 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
 def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
     if PRINT_FUNC_CALL_OPT: print("UpdateMidPoint has called!!")
     mod_hPos = hPos - dsc_const.pixelsInGroup + 1
+
     for i in range(defines.SAMPLES_PER_UNIT):
-        if mod_hPos + i <= pps.slice_width - 1:
+        if ((mod_hPos + i) <= (pps.slice_width - 1)):
+
             for unit in range(dsc_const.unitsPerGroup):
                 if (vlc_var.midpointSelected[unit]):
                     currLine[unit, mod_hPos + defines.PADDING_LEFT + i] = pred_var.midpointRecon[unit, i]
@@ -1391,7 +1395,7 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
 
 def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig, prevLine):
     if PRINT_FUNC_CALL_OPT: print("IsErrorPassWithBestHistory has called!!")
-    if sampModCnt == 0:
+    if (sampModCnt == 0):
         ich_var.origWithinQerr = 1  # Reset wit no error
 
     max_qerr = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
@@ -1405,25 +1409,27 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
 
     if ((hPos == 0) and (vPos == 0)):
         ich_var.origWithinQerr = 0  # First pixel in a slice is error
+
     else:
         if (((not pps.native_420) and (vPos > 0)) or ((pps.native_420) and (vPos > 1))):
             # UL/U/UR always valid for non-first-lines
             for i in range(ich_prevline_start, ich_prevline_end):
-                ich_var.valid[i] = 1
+                ich_var.valid[i] = True
 
-        max_qerr[0] = QuantDivisor(modMapQLevel[0]) / 2
-        max_qerr[1] = QuantDivisor(modMapQLevel[1]) / 2
-        max_qerr[2] = QuantDivisor(modMapQLevel[2]) / 2
-        max_qerr[3] = QuantDivisor(modMapQLevel[3]) / 2
+        max_qerr[0] = int(QuantDivisor(modMapQLevel[0]) / 2)
+        max_qerr[1] = int(QuantDivisor(modMapQLevel[1]) / 2)
+        max_qerr[2] = int(QuantDivisor(modMapQLevel[2]) / 2)
+        max_qerr[3] = int(QuantDivisor(modMapQLevel[3]) / 2)
 
         hit = 0
         for j in range(defines.ICH_SIZE):
-            if ich_var.valid[j]:
+            if (ich_var.valid[j].item()):
                 # Calculate 'weightedSad'
                 # Let Find the Minimum 'weightedSad' Value
                 weighted_sad = 0
                 ich_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag,
                                           (vPos % 2))
+
                 diff0 = abs(ich_pixel[0] - orig[0])
                 diff1 = abs(ich_pixel[1] - orig[1])
                 diff2 = abs(ich_pixel[2] - orig[2])
@@ -1432,19 +1438,22 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                 if (dsc_const.numComponents == 3):
                     if ((diff0 <= max_qerr[0]) and (diff1 <= max_qerr[1]) and (diff2 <= max_qerr[2])):
                         hit = 1
+
                 if (dsc_const.numComponents == 4):
                     if ((diff0 <= max_qerr[0]) and (diff1 <= max_qerr[1]) and (diff2 <= max_qerr[2]) and (
                             diff3 <= max_qerr[3])):
                         hit = 1
 
-                if pps.native_422:
+                if (pps.native_422):
                     weighted_sad = 2 * diff0 + diff1 + diff2 + 2 * diff3
-                elif (not pps.native_420) or (pps.dsc_version_minor):
-                    weighted_sad = 2 * diff0 + diff1 + diff2
+
+                elif (not pps.native_420) or (pps.dsc_version_minor == 1):
+                    weighted_sad = 2 * diff0 + diff1 + diff2 ## YCoCg chroma has an extra bit
+
                 else:
                     weighted_sad = diff0 + diff1 + diff2
 
-                if lowest_sad > weighted_sad:
+                if (lowest_sad > weighted_sad): ## Find lowest SAD
                     lowest_sad = weighted_sad
                     ich_var.ichPixels[sampModCnt, 0] = ich_pixel[0]
                     ich_var.ichPixels[sampModCnt, 1] = ich_pixel[1]
@@ -1453,15 +1462,16 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                     ich_var.ichLookup[sampModCnt] = j
 
         # debugging
-        if ich_var.ichLookup[sampModCnt] == 99:
-            print("ICH search failed")
+        if ((ich_var.ichLookup[sampModCnt] == 99) and (ich_var.valid[0].item())):
+            print("ICH search failed : [weight_sad = %d]" %weighted_sad) ## TODO : NO ICH search Fail Case...
 
-        if hit:
+        if (hit):
             ##### Check the ICH error per components #####
             # Y -> Co -> Cg -> (Y2)
             for i in range(dsc_const.unitsPerGroup):
-                if dsc_const.full_ich_err_precision:
+                if (dsc_const.full_ich_err_precision):
                     absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i])
+
                 else:
                     absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i]) >> (pps.bits_per_component - 8)
                 ich_var.maxIchError[i] = max(ich_var.maxIchError[i], absErr)
@@ -1471,24 +1481,27 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
 
 def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, recon):
     if PRINT_FUNC_CALL_OPT: print("UpdateHistoryElement has called!!")
-    first_line_flag = vPos == 0 or (pps.native_420 and vPos == 1)
-    read_pixel = np.array(4, )
+    first_line_flag = ((vPos == 0) or (pps.native_420 and (vPos == 1)))
+    read_pixel = np.array(4, dtype = np.uint32)
     # 32 or 25 (=32-7)
-    if first_line_flag:
+    if (first_line_flag):
         reserved = defines.ICH_SIZE
     else:
         reserved = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
     # Update the ICH with recon as the MRU
     hit = 0
     loc = reserved - 1  # LRU bit (rightmost bit), if no match delete LRU
+
     for j in range(reserved):  # 'j' notifies the entry
-        if not ich_var.valid[j]:
+        if (not (ich_var.valid[j].item())):
             loc = j
             break
+
         else:
             read_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag, vPos % 2)
-
+            # pecific hPos within group is not critical since hits against UL/U/UR don't have specific detection
             hit = 1
+
             for cpnt in range(dsc_const.numComponents):
                 if read_pixel[cpnt] != recon[cpnt]:
                     hit = 0
@@ -1498,17 +1511,18 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
                 loc = j
                 break  # Found one
     j = 0
+
     ## shifting ICH pixels
     for cpnt in range(dsc_const.numComponents):
         ## Delete from current position "loc" (or delete "LRU")
         for j in range(loc, 0, -1):
             #print("j : ", j)
             ich_var.pixels[cpnt, j] = ich_var.pixels[cpnt, j - 1]
-        ich_var.valid[loc] = 1
+        ich_var.valid[loc] = True
 
         # Insert the most recently reconstructed pixel into MRU
         ich_var.pixels[cpnt, 0] = recon[cpnt]
-        ich_var.valid[0] = 1
+        ich_var.valid[0] = True
 
 
 def SampToLineBuf(dsc_const, pps, cpnt, x):

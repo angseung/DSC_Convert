@@ -1,7 +1,7 @@
 import numpy as np
 from init_pps_params import initPps
-PRINT_DEBUG_OPT = 1
-PRINT_FUNC_CALL_OPT = True
+PRINT_DEBUG_OPT = False
+PRINT_FUNC_CALL_OPT = False
 
 class DSCBuffer():
 

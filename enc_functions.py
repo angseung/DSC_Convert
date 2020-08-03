@@ -577,6 +577,7 @@ def FindResidualSize(eq):
 
 
 def MaxResidualSize(pps, dsc_const, cpnt, qp):
+    ## this function has moved to mapQLevel var in enc_main loop.
     if PRINT_FUNC_CALL_OPT: print("MaxResidualSize has called!!")
     """
     :param pps: is_native_420, is_dsc_version_minor
@@ -1067,23 +1068,27 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     else:  # For escape code, no need to send trailing one for prefix
         ich_pfx = maxResSize[0] + 1 - adj_predicted_size[0]
+
     bits_ich_mode = ich_pfx + defines.ICH_BITS * dsc_const.pixelsInGroup  # length of encoded bits in case of ich mode
 
     sel_ich = IchDecision(pps, defines, flat_var, dsc_const, ich_var, ich_pfx, max_err_p_mode, bits_p_mode,
                           bits_ich_mode)
 
     if (sel_ich and ich_var.origWithinQerr and (not forceMpp) and (not ich_disallow)):  # At first unit
-        vlc_var.ichSelected = 1
+        ich_var.ichSelected = 1
         encoding_bits = bits_ich_mode  # encoded bit size for this group
+
     else:
-        vlc_var.ichSelected = 0
+        ich_var.ichSelected = 0
         encoding_bits = bits_p_mode
 
     if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3 and flat_var.IsQpWithinFlat:
         encoding_bits += 1
+
     if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 0 and flat_var.firstFlat >= 0:
         if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
             encoding_bits += 3
+
         else:
             encoding_bits += 2
 
@@ -1100,7 +1105,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
             max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
 
-    if vlc_var.ichSelected:
+    if ich_var.ichSelected:
         encoding_bits = bits_ich_mode
         prefix_size[0] = ich_pfx
         prefix_size[1] = ich_pfx
@@ -1249,7 +1254,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
         addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
 
     ################################ ICH mode ####################################
-    if (vlc_var.ichSelected):
+    if (ich_var.ichSelected):
         #### ICH (unit == 0, prefix + suffix)
         if (unit == 0): ## LUMA Unit
 
@@ -1489,7 +1494,7 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
                     hit = 0
             # if ICH was selected to (encode or decode) for previous pixel
             # and all components of ICH[j] are same with those of recon[]
-            if hit and vlc_var.ichSelected:  ## TODO decoder part
+            if hit and ich_var.ichSelected:  ## TODO decoder part
                 loc = j
                 break  # Found one
     j = 0

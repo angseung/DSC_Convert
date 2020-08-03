@@ -76,6 +76,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
+            origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
             origLine[0 : dsc_const.numComponents, (defines.PADDING_LEFT) : ] = PopulateOrigLine(pps, dsc_const, hPos, vPos, pic)
 
         ################ Initialization ###################

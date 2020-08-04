@@ -1003,7 +1003,7 @@ def IsForceMpp(pps, dsc_const, rc_var, pixelCount):
 
 
 def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, pixelCount, groupCnt,
-             FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size):
+             FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size, vPos, hPos):
     if PRINT_FUNC_CALL_OPT: print("VLCGroup has called!!")
     ######################### Declare variables #########################
     start_fullness = np.zeros(dsc_const.numSsps, ).astype(np.int32)
@@ -1205,7 +1205,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             pass
 
     if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
-        ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters)
+        ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos)
 
     vlc_var.codedGroupSize = encoding_bits
 
@@ -1234,7 +1234,7 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     rc_var.chunkPixelTimes = 0
 
 
-def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
+def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos):
     if PRINT_FUNC_CALL_OPT: print("ProcessGroupEnc has called!!")
     for i in range(pps.numSsps):
 
@@ -1257,6 +1257,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters):
                 ## put "d" into "buf" with size of "8 bits"
                 ## byte count value of "buf" is stored in "postMuxNumBits"
                 putbits(d, 8, buf)
+                # print("[%d] [%d] postMuxNumBits : %d" %(vPos, hPos, buf.postMuxNumBits))
 
                 Shifters[i].fifo_put_bits(d, 8)
                 ## fifo_put_bits(&dsc_state->shifter[i], d, 8); // put 'd' of '8-bits' into 'shifter'
@@ -1370,7 +1371,7 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
     if (defines.ICH_BITS == 0):
         return
 
-    mod_hPos = hPos - dsc_const.pixelsInGroup + 1
+    mod_hPos = (hPos - dsc_const.pixelsInGroup + 1)
     p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
 
     for i in range(dsc_const.pixelsInGroup):
@@ -1380,26 +1381,26 @@ def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
         p[3] = ich_var.ichPixels[i, 3]
 
         for cpnt in range(dsc_const.numComponents):
-            currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT] = p[cpnt]
+            currLine[cpnt, (mod_hPos + i + defines.PADDING_LEFT)] = p[cpnt]
 
 
 def UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine):
     if PRINT_FUNC_CALL_OPT: print("UpdateMidPoint has called!!")
-    mod_hPos = hPos - dsc_const.pixelsInGroup + 1
+    mod_hPos = (hPos - dsc_const.pixelsInGroup + 1)
 
     for i in range(defines.SAMPLES_PER_UNIT):
-        if ((mod_hPos + i) <= (pps.slice_width - 1)):
+        if ((mod_hPos + i) <= (dsc_const.sliceWidth - 1)):
 
             for unit in range(dsc_const.unitsPerGroup):
-                if (vlc_var.midpointSelected[unit]):
+                if (vlc_var.midpointSelected[unit].item()):
                     currLine[unit, mod_hPos + defines.PADDING_LEFT + i] = pred_var.midpointRecon[unit, i]
 
 
 def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first_line_flag, is_odd_line):
     if PRINT_FUNC_CALL_OPT: print("HistoryLookup has called!!")
-    reserved = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
-    read_pixel = np.zeros(defines.NUM_COMPONENTS, )
-    prevline_index = entry - reserved
+    reserved = (defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE)
+    read_pixel = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
+    prevline_index = (entry - reserved)
 
     ############# settle particular range of hPos into same hPos #############
     # CASE 1 : pixelsInGroup == 3, CASE 2 : pixelsInGroup == 4
@@ -1408,12 +1409,12 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
     mod_hPos = int(hPos / dsc_const.pixelsInGroup) * dsc_const.pixelsInGroup + int(dsc_const.pixelsInGroup / 2)
 
     if (pps.native_420 or pps.native_422):
-        mod_hPos = CLAMP(hPos, 2, pps.slice_width - 1 - 2)
+        mod_hPos = CLAMP(hPos, 2, (dsc_const.sliceWidth - 1 - 2)) ## Keeps upper line history entries unique at left & right edge
 
     else:
         # 3 <= mod_hPos <= end - 3
-        temp_val = int(defines.ICH_PIXELS_ABOVE / 2)
-        mod_hPos = CLAMP(mod_hPos, int(defines.ICH_PIXELS_ABOVE / 2), pps.slice_width - 1 - int(defines.ICH_PIXELS_ABOVE / 2))
+        # temp_val = int(defines.ICH_PIXELS_ABOVE / 2)
+        mod_hPos = CLAMP(mod_hPos, int(defines.ICH_PIXELS_ABOVE / 2), (dsc_const.sliceWidth - 1 - int(defines.ICH_PIXELS_ABOVE / 2)))
 
     ############# Read out "ICH pixel value" at "entry" #############
     if ((not first_line_flag) and (prevline_index >= 0)):
@@ -1421,9 +1422,9 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
         ## TODO native_420 mode
         idx = mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT
 
-        read_pixel[0] = prevLine[0, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[1] = prevLine[1, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
-        read_pixel[2] = prevLine[2, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
+        read_pixel[0] = prevLine[0, (mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT)]
+        read_pixel[1] = prevLine[1, (mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT)]
+        read_pixel[2] = prevLine[2, (mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT)]
         #read_pixel[2] = prevLine[3, mod_hPos + prevline_index - int(defines.ICH_PIXELS_ABOVE / 2) + defines.PADDING_LEFT]
         ## no needed for native_444 mode
 
@@ -1464,7 +1465,9 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
         max_qerr[2] = int(QuantDivisor(modMapQLevel[2]) / 2)
         max_qerr[3] = int(QuantDivisor(modMapQLevel[3]) / 2)
 
+        ## *MODEL NOTE* MN_ENC_ICH_IDX_SELECT
         hit = 0
+
         for j in range(defines.ICH_SIZE):
             if (ich_var.valid[j].item()):
                 # Calculate 'weightedSad'
@@ -1473,25 +1476,25 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                 ich_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag,
                                           (vPos % 2))
 
-                diff0 = abs(ich_pixel[0] - orig[0])
-                diff1 = abs(ich_pixel[1] - orig[1])
-                diff2 = abs(ich_pixel[2] - orig[2])
-                diff3 = abs(ich_pixel[3] - orig[3])
+                diff0 = abs(ich_pixel[0].item() - orig[0].item())
+                diff1 = abs(ich_pixel[1].item() - orig[1].item())
+                diff2 = abs(ich_pixel[2].item() - orig[2].item())
+                diff3 = abs(ich_pixel[3].item() - orig[3].item())
 
                 if (dsc_const.numComponents == 3):
                     if ((diff0 <= max_qerr[0]) and (diff1 <= max_qerr[1]) and (diff2 <= max_qerr[2])):
                         hit = 1
 
                 if (dsc_const.numComponents == 4):
-                    if ((diff0 <= max_qerr[0]) and (diff1 <= max_qerr[1]) and (diff2 <= max_qerr[2]) and (
-                            diff3 <= max_qerr[3])):
+                    if ((diff0 <= max_qerr[0].item()) and (diff1 <= max_qerr[1].item()) and (diff2 <= max_qerr[2].item()) and (
+                            diff3 <= max_qerr[3].item())):
                         hit = 1
 
                 if (pps.native_422):
-                    weighted_sad = 2 * diff0 + diff1 + diff2 + 2 * diff3
+                    weighted_sad = (2 * diff0) + diff1 + diff2 + (2 * diff3)
 
                 elif ((not pps.native_420) or (pps.dsc_version_minor == 1)):
-                    weighted_sad = 2 * diff0 + diff1 + diff2 ## YCoCg chroma has an extra bit
+                    weighted_sad = (2 * diff0) + diff1 + diff2 ## YCoCg chroma has an extra bit
 
                 else:
                     weighted_sad = diff0 + diff1 + diff2
@@ -1505,7 +1508,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                     ich_var.ichLookup[sampModCnt] = j
 
         # debugging
-        if ((ich_var.ichLookup[sampModCnt] == 99) and (ich_var.valid[0].item())):
+        if ((ich_var.ichLookup[sampModCnt].item() == 99) and (ich_var.valid[0].item())):
             print("ICH search failed : [weight_sad = %d]" %weighted_sad) ## TODO : NO ICH search Fail Case...
 
         if (hit):
@@ -1513,11 +1516,12 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
             # Y -> Co -> Cg -> (Y2)
             for i in range(dsc_const.unitsPerGroup):
                 if (dsc_const.full_ich_err_precision):
-                    absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i])
+                    absErr = (abs(ich_var.ichPixels[sampModCnt, i].item() - orig[i].item()))
 
                 else:
-                    absErr = abs(ich_var.ichPixels[sampModCnt, i] - orig[i]) >> (pps.bits_per_component - 8)
-                ich_var.maxIchError[i] = max(ich_var.maxIchError[i], absErr)
+                    absErr = (abs(ich_var.ichPixels[sampModCnt, i].item() - orig[i].item()) >> (pps.bits_per_component - 8))
+
+                ich_var.maxIchError[i] = max(ich_var.maxIchError[i].item(), absErr)
         else:
             ich_var.origWithinQerr = 0
 
@@ -1543,20 +1547,20 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
             break
 
         else:
-            read_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag, vPos % 2)
+            read_pixel = HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, j, hPos, first_line_flag, (vPos % 2))
             # pecific hPos within group is not critical since hits against UL/U/UR don't have specific detection
             hit = 1
 
             for cpnt in range(dsc_const.numComponents):
-                if read_pixel[cpnt] != recon[cpnt]:
+                if (not (read_pixel[cpnt].item() == recon[cpnt].item())):
                     hit = 0
 
             # if ICH was selected to (encode or decode) for previous pixel
             # and all components of ICH[j] are same with those of recon[]
-            if hit and ich_var.ichSelected:  ## TODO decoder part
+            if (hit and ich_var.ichSelected):  ## TODO decoder part
                 loc = j
                 break  # Found one
-    j = 0
+    # j = 0
 
     ## shifting ICH pixels
     for cpnt in range(dsc_const.numComponents):
@@ -1564,6 +1568,7 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
         for j in range(loc, 0, -1):
             #print("j : ", j)
             ich_var.pixels[cpnt, j] = ich_var.pixels[cpnt, j - 1]
+
         ich_var.valid[loc] = True
 
         # Insert the most recently reconstructed pixel into MRU

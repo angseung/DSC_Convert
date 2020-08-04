@@ -72,7 +72,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
@@ -137,7 +137,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             ######################### Variable Length Encoding (VLC) ####################
             VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, pixelCount, groupCnt,
-                     FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
+                     FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size, vPos, hPos)
 
             # bufferFullness = 0 ## Declair bufferFullness Variable
             bufferFullness = rc_var.bufferFullness ## 2020.07.30 Revision
@@ -153,6 +153,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ########### The final reconstructed pixel value ############
             if (ich_var.ichSelected):
                 UseICHistory(defines, dsc_const, ich_var, hPos, currLine)
+                print("ICH Selected in [%d] [%d]" %(vPos, hPos))
 
             else:
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)
@@ -162,6 +163,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 mod_hPos = (hPos - 2)
 
                 ich_p = np.zeros(defines.NUM_COMPONENTS, dtype = np.int32)
+
                 for i in range(dsc_const.pixelsInGroup):
                     for cpnt in range(dsc_const.numComponents):
                         ich_p[cpnt] = currLine[cpnt, mod_hPos + i + defines.PADDING_LEFT]

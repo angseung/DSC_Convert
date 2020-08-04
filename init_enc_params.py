@@ -197,7 +197,7 @@ class initDscConstants:
             if diff_cond:
                 self.cpntBitDepth[i] += 1
                 # range_[i] *= 2
-        self.maxSeSize = np.zeros(4)
+        self.maxSeSize = np.zeros(4, dtype = np.int32)
         if pps.bits_per_component == 16:
             self.maxSeSize[0] = self.maxSeSize[1] = self.maxSeSize[2] = self.maxSeSize[3] = 64
         else:

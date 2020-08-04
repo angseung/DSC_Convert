@@ -72,7 +72,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
@@ -136,7 +136,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                     hPos += 1 ## set hPos to indicate the last pixel in a group
 
             ######################### Variable Length Encoding (VLC) ####################
-            VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
+            VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, pixelCount, groupCnt,
                      FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size)
 
             # bufferFullness = 0 ## Declair bufferFullness Variable

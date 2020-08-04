@@ -686,6 +686,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
         p = a
         if (sampModCnt == 1):
             p = CLAMP(a + (groupQuantizedResidual[0] * QuantDivisor(qLevel)), 0, (1 << cpntBitDepth[cpnt]) - 1)
+
         elif (sampModCnt == 2):
             p = CLAMP(a + (groupQuantizedResidual[0] + groupQuantizedResidual[1]) * QuantDivisor(qLevel),
                       0, (1 << cpntBitDepth[cpnt]) - 1)
@@ -726,9 +727,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
     # if (((vPos == 10) and (1266 <= hPos <= 1268))
     #     or ((vPos == 43) and (1755 <= hPos <= 1757))
     #     or ((vPos == 72) and (462 <= hPos <= 464))):
-    #     print("Prediction Value... [%d] [%d], method : [%d]" %(hPos, vPos, predType))
-
-
+    #     print("Prediction Value... [%d] [%d], method : [%d], Pixel Val [%d]" %(hPos, vPos, predType, p))
     return p
 
 
@@ -911,6 +910,7 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
         if (hPos > candidate_vector):
             # currLine[-1] ~ currLine[-13]
             pred_x = currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - candidate_vector, 0)].item()
+
         else:
             pred_x = ref_value
 
@@ -973,25 +973,36 @@ def BlockPredSearch(pred_var, pps, dsc_const, defines, currLine, cpnt, hPos):
                 pred_var.prevLinePred[int(hPos / defines.PRED_BLK_SIZE)] = defines.PT_MAP
 
 
-def IsForceMpp(pps, dsc_const, rc_var):
+def IsForceMpp(pps, dsc_const, rc_var, pixelCount):
     if PRINT_FUNC_CALL_OPT: print("IsForceMpp has called!!")
-    maxBitsPerGroup = (dsc_const.pixelsInGroup * pps.bits_per_pixel + 15) >> 4
+    maxBitsPerGroup = ((dsc_const.pixelsInGroup * pps.bits_per_pixel) + 15) >> 4
     adjFullness = rc_var.bufferFullness
 
-    bugFixCondition = (pps.bits_per_pixel * pps.slice_width) & 0b1111
-    tmp = rc_var.numBitsChunk + maxBitsPerGroup + 8
+    bugFixCondition = ((pps.bits_per_pixel * pps.slice_width) & 0xf)
+    tmp = (rc_var.numBitsChunk + maxBitsPerGroup + 8)
 
     force_mpp = 0
-    if (bugFixCondition is not 0 and tmp == pps.chunk_size * 8) or (tmp > pps.chunk_size * 8):
+
+    if ((not (bugFixCondition == 0)) and (tmp == (pps.chunk_size * 8))) or (tmp > (pps.chunk_size * 8)):
+        ## Bit Suffering Detection 1
+        ## End of chunk check to see if there is a potential to underflow
+        ## assuming adjustment bits are sent.
         adjFullness -= 8
-        if (adjFullness < maxBitsPerGroup - dsc_const.unitsPerGroup):
+
+        if (adjFullness < (maxBitsPerGroup - dsc_const.unitsPerGroup)):
+            ## Force MPP is possible in VBR only at end of line to pad chunks to byte boundaries
             force_mpp = 1
+
+    elif (not (pps.vbr_enable) and (pixelCount >= pps.initial_xmit_delay)):
+        if (adjFullness < (maxBitsPerGroup - dsc_const.unitsPerGroup)):
+            force_mpp = 1
+
     ## Todo when VBR enabled
 
     return force_mpp
 
 
-def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, groupCnt,
+def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_var, buf, pixelCount, groupCnt,
              FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size):
     if PRINT_FUNC_CALL_OPT: print("VLCGroup has called!!")
     ######################### Declare variables #########################
@@ -1010,7 +1021,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     else:
         ich_disallow = 0
 
-    forceMpp = IsForceMpp(pps, dsc_const, rc_var)
+    forceMpp = IsForceMpp(pps, dsc_const, rc_var, pixelCount)
 
     ich_var.prevIchSelected = ich_var.ichSelected
 
@@ -1041,10 +1052,10 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         add_prefix_one[unit] = 0
 
         ########## Predicted size is too small to hold max_size
-        if adj_predicted_size[unit] < max_size[unit]:
+        if (adj_predicted_size[unit] < max_size[unit]):
             suffix_size[unit] = max_size[unit]
 
-            if unit == 0:
+            if (unit == 0):
 
                 if (ich_var.prevIchSelected):
                     # ICH -> P (add '1' bit)
@@ -1064,43 +1075,44 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
                 else:
                     prefix_size[unit] = enc_pred_size + 1  # smaller than Max bits (add '1' bit)
 
-            if unit == 0:
+            if (unit == 0):
 
-                if ich_var.prevIchSelected:
+                if (ich_var.prevIchSelected):
 
                     if (max_size[unit] != maxResSize[unit]):
                         add_prefix_one[unit] = 1
                 else:
                     add_prefix_one[unit] = 1
             else:
-                if max_size[unit] != maxResSize[unit]:
+                if (not (max_size[unit] == maxResSize[unit])):
                     add_prefix_one[unit] = 1
         ######### Predicted size is sufficient to hold max_size
         else:
             suffix_size[unit] = adj_predicted_size[unit]
 
-            if unit == 0:
-                if ich_var.prevIchSelected:
+            if (unit == 0):
+                if (ich_var.prevIchSelected):
                     prefix_size[unit] = 2
 
                 else:
                     prefix_size[unit] = 1
             else:
                 prefix_size[unit] = 1
+
             add_prefix_one[unit] = 1
 
-    bits_p_mode = prefix_size[0] + prefix_size[1] + prefix_size[2] + prefix_size[3]
-    bits_p_mode += defines.SAMPLES_PER_UNIT * (suffix_size[0] + suffix_size[1] + suffix_size[2] + suffix_size[3])
+    bits_p_mode = (prefix_size[0] + prefix_size[1] + prefix_size[2] + prefix_size[3])
+    bits_p_mode += (defines.SAMPLES_PER_UNIT * (suffix_size[0] + suffix_size[1] + suffix_size[2] + suffix_size[3]))
 
     #########################################################################
     ###################### Determines P or ICH mode ##########################
-    if ich_var.prevIchSelected:
+    if (ich_var.prevIchSelected):
         ich_pfx = 1
 
     else:  # For escape code, no need to send trailing one for prefix
         ich_pfx = maxResSize[0] + 1 - adj_predicted_size[0]
 
-    bits_ich_mode = ich_pfx + defines.ICH_BITS * dsc_const.pixelsInGroup  # length of encoded bits in case of ich mode
+    bits_ich_mode = ich_pfx + (defines.ICH_BITS * dsc_const.pixelsInGroup)  # length of encoded bits in case of ich mode
 
     sel_ich = IchDecision(pps, defines, flat_var, dsc_const, ich_var, ich_pfx, max_err_p_mode, bits_p_mode,
                           bits_ich_mode)
@@ -1117,7 +1129,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         encoding_bits += 1
 
     if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 0 and flat_var.firstFlat >= 0:
-        if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
+        if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             encoding_bits += 3
 
         else:
@@ -1184,10 +1196,10 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
             encoding_bits += 2
 
     for i in range(dsc_const.numSsps):
-        seSizeFIFOs[i].fifo_put_bits(prefix_size.item(i) + suffix_size.item(i), 8)
+        seSizeFIFOs[i].fifo_put_bits((prefix_size[i].item() + suffix_size[i].item()), 8)
         #fifo_put_bits(seSizeFIFOs[i], prefix_size[i] + suffix_size[i])
 
-        if (FIFOs[i].fullness - start_fullness[i] > dsc_const.maxSeSize[i]):
+        if ((FIFOs[i].fullness - start_fullness[i].item()) > dsc_const.maxSeSize[i].item()):
         # if (prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]):
             #print("SE Size FIFO too small")
             pass
@@ -1309,7 +1321,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
     else:
 
-        if add_prefix_one:
+        if (add_prefix_one):
             addbits(vlc_var, FIFO, 1, prefix_size)
 
         else:
@@ -1317,7 +1329,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
         for i in range(defines.SAMPLES_PER_UNIT):
 
-            if max_size == maxResSize:
+            if (max_size == maxResSize):
                 addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
 
             else:
@@ -1334,28 +1346,28 @@ def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_m
         log_err_p_mode += ceil_log2(max_err_p_mode[i])
         log_err_ich_mode += ceil_log2(ich_var.maxIchError[i])
 
-        if i == 0 and pps.dsc_version_minor == 1:
+        if ((i == 0) and (pps.dsc_version_minor == 1)):
             log_err_p_mode <<= 1
             log_err_ich_mode <<= 1
 
-    p_mode_cost = bits_p_mode + defines.ICH_LAMBDA * log_err_p_mode
-    ich_mode_cost = bits_ich_mode + defines.ICH_LAMBDA * log_err_ich_mode
+    p_mode_cost = bits_p_mode + (defines.ICH_LAMBDA * log_err_p_mode)
+    ich_mode_cost = bits_ich_mode + (defines.ICH_LAMBDA * log_err_ich_mode)
 
-    if pps.dsc_version_minor == 2:
-        if flat_var.flatnessCurPos == 2:
-            decision = (log_err_ich_mode <= log_err_p_mode) and (ich_mode_cost < p_mode_cost)
+    if (pps.dsc_version_minor == 2):
+        if (flat_var.flatnessCurPos == 2):
+            decision = ((log_err_ich_mode <= log_err_p_mode) and (ich_mode_cost < p_mode_cost))
 
         else:
-            decision = ich_mode_cost < p_mode_cost
+            decision = (ich_mode_cost < p_mode_cost)
     else:
-        decision = (log_err_ich_mode <= log_err_p_mode) and (ich_mode_cost < p_mode_cost)
+        decision = ((log_err_ich_mode <= log_err_p_mode) and (ich_mode_cost < p_mode_cost))
 
     return decision
 
 
 def UseICHistory(defines, dsc_const, ich_var, hPos, currLine):
     if PRINT_FUNC_CALL_OPT: print("UseICHistory has called!!")
-    if defines.ICH_BITS == 0:
+    if (defines.ICH_BITS == 0):
         return
 
     mod_hPos = hPos - dsc_const.pixelsInGroup + 1
@@ -1478,7 +1490,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
                 if (pps.native_422):
                     weighted_sad = 2 * diff0 + diff1 + diff2 + 2 * diff3
 
-                elif (not pps.native_420) or (pps.dsc_version_minor == 1):
+                elif ((not pps.native_420) or (pps.dsc_version_minor == 1)):
                     weighted_sad = 2 * diff0 + diff1 + diff2 ## YCoCg chroma has an extra bit
 
                 else:
@@ -1517,9 +1529,11 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
     # 32 or 25 (=32-7)
     if (first_line_flag):
         reserved = defines.ICH_SIZE
+
     else:
         reserved = defines.ICH_SIZE - defines.ICH_PIXELS_ABOVE
     # Update the ICH with recon as the MRU
+
     hit = 0
     loc = reserved - 1  # LRU bit (rightmost bit), if no match delete LRU
 
@@ -1536,6 +1550,7 @@ def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hP
             for cpnt in range(dsc_const.numComponents):
                 if read_pixel[cpnt] != recon[cpnt]:
                     hit = 0
+
             # if ICH was selected to (encode or decode) for previous pixel
             # and all components of ICH[j] are same with those of recon[]
             if hit and ich_var.ichSelected:  ## TODO decoder part
@@ -1572,5 +1587,5 @@ def SampToLineBuf(dsc_const, pps, cpnt, x):
         # Max value = 2^line_buf_depth - 1
         storedSample = min((x + rounding) >> shift_amount, (1 << pps.line_buf_depth) - 1)
 
-    return_val = storedSample << shift_amount
+    return_val = (storedSample << shift_amount)
     return return_val

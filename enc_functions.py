@@ -657,7 +657,7 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     return qlevel
 
 
-def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
+def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
                   qLevel, cpntBitDepth):
     if PRINT_FUNC_CALL_OPT: print("SamplePredict has called!!")
     # TODO h_offset_array_idx is equal to group count value
@@ -719,8 +719,15 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, predType, 
                 max(max(a, blend_b), max(blend_d, blend_e)))
 
     else:  # Block prediction
+        # print("Bloack Prediction Used... [%d] [%d]" %(hPos, vPos))
         bp_offset = predType - defines.PT_BLOCK
         p = (currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - bp_offset, 0)]).item()
+
+    # if (((vPos == 10) and (1266 <= hPos <= 1268))
+    #     or ((vPos == 43) and (1755 <= hPos <= 1757))
+    #     or ((vPos == 72) and (462 <= hPos <= 464))):
+    #     print("Prediction Value... [%d] [%d], method : [%d]" %(hPos, vPos, predType))
+
 
     return p
 
@@ -753,7 +760,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
             ####### TODO native_420 mode
             raise NotImplementedError
         else:
-            pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, prevLine, currLine, pred2use, sampModCnt,
+            pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred2use, sampModCnt,
                                    pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)
@@ -778,6 +785,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         if (err_mid_size > max_residual_bit):
             if err_mid_q > 0:
                 err_mid_q = 2 ** (max_residual_bit - 1) - 1
+
             else:
                 err_mid_q = -1 * 2 ** (max_residual_bit - 1)
 
@@ -787,6 +795,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         if sampModCnt == 0:
             pred_var.max_size[unit] = err_raw_size
+
         else:
             pred_var.max_size[unit] = max(pred_var.max_size[unit], err_raw_size)
             if (pred_var.max_size[unit] >= maxResSize[unit]):
@@ -803,7 +812,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
         #### PIXEL VAL DEBUG....####
-        print("[%d] [%d] cpnt : [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, cpnt, actual_x, recon_x))
+        # print("[%d] [%d] cpnt : [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, cpnt, actual_x, recon_x))
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)

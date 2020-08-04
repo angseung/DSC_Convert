@@ -72,12 +72,16 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
             origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
             origLine[0 : dsc_const.numComponents, (defines.PADDING_LEFT) : ] = PopulateOrigLine(pps, dsc_const, hPos, vPos, pic)
+
+        ## ICH DEBUG ONLY
+        if (hPos == 749):
+            a = 10
 
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions
@@ -110,21 +114,24 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
         #################### P or ICH Selection ###################
         ###################### ICH operation ######################
-        orig = np.zeros((origLine.shape[0] + 1, 1)).astype(np.int32)
-        tmp = (origLine[0 : dsc_const.numComponents, hPos + defines.PADDING_LEFT]).reshape((dsc_const.numComponents, 1))
-        orig[0 : dsc_const.numComponents, :] = tmp
+        orig = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
+        tmp = (origLine[0 : dsc_const.numComponents, hPos + defines.PADDING_LEFT])
+            #.reshape((dsc_const.numComponents, 1))
+        orig[0 : dsc_const.numComponents] = tmp
         IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig,
                                        prevLine)
+
+        ## CHECK ich_var.origWithinQerr for Debug...
 
         #####################################################################
         ###################### Last pixel in a a group ######################
         #################### Flatness adjustment ###################
-        if ((sampModCnt == 2) or (hPos == (dsc_const.sliceWidth - 1))):
+        if ((sampModCnt == (dsc_const.pixelsInGroup - 1)) or (hPos == (dsc_const.sliceWidth - 1))):
             ## Last Pixel in a Group "OR" Outbound pixel outside of slice
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
             FlatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
-            if (sampModCnt < 2):
+            if (sampModCnt < (dsc_const.pixelsInGroup - 1)):
 
                 if (sampModCnt == 0):
                     ich_var.ichLookup[1] = ich_var.ichLookup[0]
@@ -140,8 +147,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                      FIFOs, seSizeFIFOs, Shifters, mapQLevel, maxResSize, adj_predicted_size, vPos, hPos)
 
             # bufferFullness = 0 ## Declair bufferFullness Variable
+            rc_var.bufferFullness += vlc_var.codedGroupSize # Increase buffer fullness
             bufferFullness = rc_var.bufferFullness ## 2020.07.30 Revision
-            bufferFullness += vlc_var.codedGroupSize # Increase buffer fullness
 
             if (bufferFullness > pps.rcb_bits):
                 ## This check may actually belong after tgt_bpg has been subtracted
@@ -157,6 +164,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             else:
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)
+                # print("MPP Selected in [%d] [%d]" % (vPos, hPos))
 
             ########### Update ICH pixels ############
             if ((not (defines.ICH_BITS == 0)) and (hPos < (dsc_const.sliceWidth - 1))): ## Skip the Update ICH of the last group
@@ -182,11 +190,11 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
                     if ((pps.native_420) and (cpnt == dsc_const.numComponents - 1)):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
             ################################## Rate controller  #############################
             [rc_var.currentScale, rc_var.rcXformOffset] = CalcFullnessOffset(vPos, pixelCount,

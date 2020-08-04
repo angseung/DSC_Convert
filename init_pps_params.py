@@ -337,8 +337,8 @@ class initPps:
         self.flatness_max_qp          = flatness_max_qp
         self.rc_model_size            = rc_model_size
         self.rc_edge_factor           = rc_edge_factor
-        self.rc_quant_icnr_limit0     = rc_quant_incr_limit0
-        self.rc_quant_icnr_limit1     = rc_quant_incr_limit1
+        self.rc_quant_incr_limit0     = rc_quant_incr_limit0
+        self.rc_quant_incr_limit1     = rc_quant_incr_limit1
         self.rc_tgt_offset_hi         = rc_tgt_offset_hi
         self.rc_tgt_offset_lo         = rc_tgt_offset_lo
         self.rc_buf_thresh            = rc_buf_thresh

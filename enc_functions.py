@@ -1015,7 +1015,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     add_prefix_one = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
     #########################  Set control varaibles #########################
-    if ((pps.bits_per_pixel == 0) and (3 * mapQLevel[0] <= 3 - adj_predicted_size[0])):
+    if ((pps.bits_per_component == 0) and (3 * mapQLevel[0] <= 3 - adj_predicted_size[0])):
         ich_disallow = 1  # No ICH allowed for special case
 
     else:
@@ -1444,7 +1444,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
 
     max_qerr = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
 
-    lowest_sad = 2 ** 30
+    lowest_sad = (2 ** 30)
     first_line_flag = ((vPos == 0) or (pps.native_420 and vPos == 1))
     ich_var.ichLookup[sampModCnt] = 99
 

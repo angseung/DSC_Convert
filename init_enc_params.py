@@ -49,7 +49,7 @@ class initFlatVariables:
         self.flat_stQp = 0
         self.origIsFlat = 0
         self.flat_prevQp = 0
-        self.prevFirstFlat = 0 ## Todo
+        self.prevFirstFlat = -1 ## Todo
         self.flatnessType = 0
         self.prevFlatnessType = 0 ## Todo
         self.flatnessMemory = np.zeros(defines.GROUPS_PER_SUPERGROUP, ).astype(np.int32)

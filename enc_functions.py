@@ -67,22 +67,20 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
                 if (max_val < pixel_val): max_val = pixel_val
                 if (min_val > pixel_val): min_val = pixel_val
 
-            is_somewhatflat_falied = (max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt]))
-            is_veryflat_failed = (max_val - min_val) > vf_thresh
+            is_somewhatflat1_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
+            is_veryflat1_failed = (max_val - min_val) > vf_thresh
 
-            if (not is_somewhatflat_falied):
+            if (is_somewhatflat1_falied):
                 t1_somewhat_flat = False
 
-            if (not is_veryflat_failed):
+            if (is_veryflat1_failed):
                 t1_very_flat = False
 
         # test2_condition = (not (t1_very_flat or t1_somewhat_flat))
-        test2_condition = ((t1_somewhat_flat == False) and (t1_very_flat == False))
-
-        # if (not test2_condition):
-        #     a = 0
+        test2_condition = (is_somewhatflat1_falied and is_veryflat1_failed)
 
         # Left adjacent isn't flat, but current group & group to the right is flat
+
         #### Flat Test 2
         if (test2_condition):
             for cpnt in range(define.NUM_COMPONENTS):
@@ -104,13 +102,13 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
                     if (max_val < pixel_val): max_val = pixel_val
                     if (min_val > pixel_val): min_val = pixel_val
 
-                is_somewhatflat_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
-                is_veryflat_failed = ((max_val - min_val) > vf_thresh)
+                is_somewhatflat2_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
+                is_veryflat2_failed = ((max_val - min_val) > vf_thresh)
 
-                if not is_somewhatflat_falied:
+                if (is_somewhatflat2_falied):
                     t2_somewhat_flat = False
 
-                if not is_veryflat_failed:
+                if (is_veryflat2_failed):
                     t2_very_flat = False
 
     if (is_end_of_slice or is_check_skip):
@@ -1119,26 +1117,31 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     if (sel_ich and ich_var.origWithinQerr and (not forceMpp) and (not ich_disallow)):  # At first unit
         ich_var.ichSelected = 1
-        encoding_bits = bits_ich_mode  # encoded bit size for this group
+        # encoding_bits = bits_ich_mode  # encoded bit size for this group
 
     else:
         ich_var.ichSelected = 0
-        encoding_bits = bits_p_mode
+        # encoding_bits = bits_p_mode
 
-    if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3 and flat_var.IsQpWithinFlat:
-        encoding_bits += 1
-
-    if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 0 and flat_var.firstFlat >= 0:
-        if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
-            encoding_bits += 3
-
-        else:
-            encoding_bits += 2
+    # if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3 and flat_var.IsQpWithinFlat:
+    #     encoding_bits += 1
+    #
+    # if (groupCnt % defines.GROUPS_PER_SUPERGROUP) == 0 and flat_var.firstFlat >= 0:
+    #     if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
+    #         encoding_bits += 3
+    #
+    #     else:
+    #         encoding_bits += 2
 
     #########################################################################
     ########################### Encoding Process ############################
     # get prefix and encode each units
     ## Todo AddBits function
+
+    # for unit in range(dsc_const.unitsPerGroup):
+    #     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one[unit],
+    #             max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx)
+
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
             max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
@@ -1148,17 +1151,18 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
             max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
 
-    if ich_var.ichSelected:
+    if (ich_var.ichSelected):
         encoding_bits = bits_ich_mode
         prefix_size[0] = ich_pfx
-        prefix_size[1] = ich_pfx
-        prefix_size[2] = ich_pfx
-        prefix_size[3] = ich_pfx
+        prefix_size[1] = 0
+        prefix_size[2] = 0
+        prefix_size[3] = 0
 
         suffix_size[0] = defines.ICH_BITS
         suffix_size[1] = defines.ICH_BITS
         suffix_size[2] = defines.ICH_BITS
         suffix_size[3] = defines.ICH_BITS
+
         vlc_var.rcSizeUnit[0] = dsc_const.pixelsInGroup * defines.ICH_BITS + 1
         vlc_var.rcSizeUnit[1] = 0
         vlc_var.rcSizeUnit[2] = 0
@@ -1170,11 +1174,12 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         suffix_size[1] *= defines.SAMPLES_PER_UNIT
         suffix_size[2] *= defines.SAMPLES_PER_UNIT
         suffix_size[3] *= defines.SAMPLES_PER_UNIT
+
         # rate control size uses max required size plus 1 (for prefix value of 0)
-        vlc_var.rcSizeUnit[0] = max_size[0] * defines.SAMPLES_PER_UNIT + 1
-        vlc_var.rcSizeUnit[1] = max_size[1] * defines.SAMPLES_PER_UNIT + 1
-        vlc_var.rcSizeUnit[2] = max_size[2] * defines.SAMPLES_PER_UNIT + 1
-        vlc_var.rcSizeUnit[3] = max_size[3] * defines.SAMPLES_PER_UNIT + 1
+        vlc_var.rcSizeUnit[0] = (max_size[0] * defines.SAMPLES_PER_UNIT) + 1
+        vlc_var.rcSizeUnit[1] = (max_size[1] * defines.SAMPLES_PER_UNIT) + 1
+        vlc_var.rcSizeUnit[2] = (max_size[2] * defines.SAMPLES_PER_UNIT) + 1
+        vlc_var.rcSizeUnit[3] = (max_size[3] * defines.SAMPLES_PER_UNIT) + 1
 
         # Predict size for next unit for this component ((required_size[0]+required_size[1]+2*required_size[2])/4)
         vlc_var.predictedSize[0] = (2 + req_size[0, 0] + req_size[0, 1] + 2 * req_size[0, 2]) >> 2
@@ -1186,7 +1191,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         prefix_size[0] += 1
         encoding_bits += 1
 
-    if ((groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
+    if (((groupCnt % defines.GROUPS_PER_SUPERGROUP) == 0) and (flat_var.firstFlat >= 0)):
         if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             prefix_size[0] += 3
             encoding_bits += 3
@@ -1281,6 +1286,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
             max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
     if PRINT_FUNC_CALL_OPT: print("VLCunit has called!!")
+
     ################################ Insert flat flag ####################################
     if ((unit == 0) and ((groupCnt % defines.GROUPS_PER_SUPERGROUP) == 3) and (flat_var.IsQpWithinFlat)):
 
@@ -1293,25 +1299,30 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
     ################################ Insert flat type ####################################
     if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
 
-        if rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH:
+        if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
-        addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
+
+        else:
+            # flat_var.flatnessType = 0
+            addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
+            # pass
 
     ################################ ICH mode ####################################
     if (ich_var.ichSelected):
         #### ICH (unit == 0, prefix + suffix)
         if (unit == 0): ## LUMA Unit
 
-            if ich_var.prevIchSelected:
-                addbits(vlc_var, FIFO, 1, ich_pfx) ##
+            if ich_var.prevIchSelected: # ICH -> ICH
+                addbits(vlc_var, FIFO, 1, ich_pfx) ## prefix is just bit "1"
 
-            else:
+            else:                       # P -> ICH
                 addbits(vlc_var, FIFO, 0, ich_pfx) ##
 
             for i in range(dsc_const.pixelsInGroup):
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
-                    addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
+                    addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS) # insert suffix
+
         #### ICH Lookup (unit > 0, suffix)
         else:
 
@@ -1321,7 +1332,6 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
 
     else:
-
         if (add_prefix_one):
             addbits(vlc_var, FIFO, 1, prefix_size)
 
@@ -1330,7 +1340,7 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
         for i in range(defines.SAMPLES_PER_UNIT):
 
-            if (max_size == maxResSize):
+            if (max_size == maxResSize): # Select MPP
                 addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
 
             else:

@@ -89,15 +89,15 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
                 min_val = 99999
 
                 for j in range(fc2_start, fc2_end):
-                    # pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                    pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
                     ## TODO : fix origline out of bound problem in flatness test 2...
                     ## Implemented temporarily pass keyword...
                     ##
-                    try:
-                        pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
-
-                    except:
-                        pass
+                    # try:
+                    #     pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                    #
+                    # except:
+                    #     pass
 
                     if (max_val < pixel_val): max_val = pixel_val
                     if (min_val > pixel_val): min_val = pixel_val
@@ -162,12 +162,12 @@ def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
         if (flat_var.prevWasFlat):
             if ((flat_var.flatnessCnt >= 1) and (flat_var.flatnessMemort[0] > 0)):
                 flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
-                flat_var.prevFlatnessType = flat_var.flatnessMemory[0] - 1
+                flat_var.prevFlatnessType = (flat_var.flatnessMemory[0] - 1)
 
         else:
             if (flat_var.flatnessCnt >= 1):
                 flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
-                flat_var.prevFlatnessType = flat_var.flatnessMemory[0] - 1
+                flat_var.prevFlatnessType = (flat_var.flatnessMemory[0] - 1)
 
     elif ((supergroup_cnt == 3) and (not flat_var.IsQpWithinFlat)):
         flat_var.prevFirstFlat = -1
@@ -196,7 +196,7 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
     unity_scale = 1 << (define.RC_SCALE_BINARY_POINT)
     throttleFrac = 0  # from throttleFrac in dscstate structure
 
-    temp_scaleAdjustCounter = rc_var.scaleAdjustCounter + 1
+    temp_scaleAdjustCounter = (rc_var.scaleAdjustCounter + 1)
     flag1 = (groupCnt == 0)
     flag2 = ((vPos == 0) and (rc_var.currentScale > unity_scale))
     case_dec = (temp_scaleAdjustCounter > pps.scale_decrement_interval)

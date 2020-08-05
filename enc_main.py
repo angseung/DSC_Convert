@@ -72,7 +72,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
@@ -101,8 +101,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 adj_predicted_size[i] = CLAMP(pred_size, 0, maxResSize[i] - 1)
 
             ## Reset valid control of ICH
-            if ((hPos == 0) and ((vPos == 0) or (pps.slice_width != pps.pic_width))):
-                ich_var.valid[:] = 0
+            ## Reset ICH at beginning of each line if multiple slices per line
+            if (((hPos == 0) and (vPos == 0)) or # Beginning of slice
+                    ((hPos == 0) and (not (pps.slice_width == pps.pic_width)))): # End of Slice!
+                ich_var.valid[:] = 0 # zero setting
 
                 ## DELETE UNNESESSARY LOOP
                 # for idx in range(defines.ICH_SIZE):
@@ -150,6 +152,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             rc_var.bufferFullness += vlc_var.codedGroupSize # Increase buffer fullness
             bufferFullness = rc_var.bufferFullness ## 2020.07.30 Revision
 
+            print("[%d] [%d] Current Buffer Fullness : [%d]" %(vPos, hPos, rc_var.bufferFullness))
+
             if (bufferFullness > pps.rcb_bits):
                 ## This check may actually belong after tgt_bpg has been subtracted
                 print("The buffer model has overflowed.  This probably occurred due to an error in the")
@@ -160,7 +164,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ########### The final reconstructed pixel value ############
             if (ich_var.ichSelected):
                 UseICHistory(defines, dsc_const, ich_var, hPos, currLine)
-                print("ICH Selected in [%d] [%d]" %(vPos, hPos))
+                # print("ICH Selected in [%d] [%d]" %(vPos, hPos))
 
             else:
                 UpdateMidPoint(pps, defines, dsc_const, pred_var, vlc_var, hPos, currLine)

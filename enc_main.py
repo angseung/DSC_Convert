@@ -12,7 +12,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     pred_var = initPredVariables(defines, dsc_const)
     flat_var = initFlatVariables(defines)
     vlc_var = initVlcVariables(defines)
-    rc_var = initRcVariables()
+    rc_var = initRcVariables(pps)
 
     ########### Declare buffers ########
     # Line Buffer Axis : [Component, hPos]
@@ -79,10 +79,6 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
             origLine[0 : dsc_const.numComponents, (defines.PADDING_LEFT) : ] = PopulateOrigLine(pps, dsc_const, hPos, vPos, pic)
 
-        ## ICH DEBUG ONLY
-        if (hPos == 749):
-            a = 10
-
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions
         if (sampModCnt == 0):
@@ -111,10 +107,6 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
-
-        # if (hPos == 1270):
-        #     pass
-
         PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
                                              mapQLevel, maxResSize, rc_var.masterQp)
 
@@ -124,7 +116,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         tmp = (origLine[0 : dsc_const.numComponents, hPos + defines.PADDING_LEFT])
             #.reshape((dsc_const.numComponents, 1))
         orig[0 : dsc_const.numComponents] = tmp
-        IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig,
+
+        origWithinQerr = IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig,
                                        prevLine)
 
         ## CHECK ich_var.origWithinQerr for Debug...
@@ -163,7 +156,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 ## This check may actually belong after tgt_bpg has been subtracted
                 print("The buffer model has overflowed.  This probably occurred due to an error in the rate control parameter programming.")
                 print("ERROR: RCB overflow; size is %d, tried filling to %d", pps.rcb_bits, bufferFullness)
-                exit(1)
+                exit(-1)
 
             ########### The final reconstructed pixel value ############
             if (ich_var.ichSelected):
@@ -205,9 +198,9 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                             CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
             ################################## Rate controller  #############################
-            [rc_var.currentScale, rc_var.rcXformOffset] = CalcFullnessOffset(vPos, pixelCount,
-                                                                               groupCnt, pps, defines, dsc_const, vlc_var, rc_var)
+            [scale, bpg_offset] = CalcFullnessOffset(vPos, hPos, pixelCount, groupCnt, pps, defines, dsc_const, vlc_var, rc_var)
             groupCnt += 1 ## TODO groupCnt increase timing
+
             ############################### From RateControl Func...
             rc_var.prevFullness = rc_var.bufferFullness
 
@@ -217,7 +210,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
-            RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
+            # throttle_offset = rc_var.rcXformOffset
+            RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines, scale, bpg_offset)
             # print("Currnt Position : [%d] [%d], masterQp is [%d]" %(vPos, hPos, rc_var.masterQp))
             ## masterQp decision is done in Rate Control function...
             # rc_var.masterQp = rc_var.prevQp

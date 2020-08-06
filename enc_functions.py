@@ -130,9 +130,9 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 ########### TODO hPos is not accurate
 def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
     if PRINT_FUNC_CALL_OPT: print("FlatnessAdjustment has called!!")
-    pixelsInGroup = 3
+    # pixelsInGroup = 3
     supergroup_cnt = (groupCount % define.GROUPS_PER_SUPERGROUP)
-    flatness_index = hPos + (pixelsInGroup * define.GROUPS_PER_SUPERGROUP)
+    flatness_index = hPos + (dsc_const.pixelsInGroup * define.GROUPS_PER_SUPERGROUP)
 
     if (supergroup_cnt == 0):
         flat_var.flatnessCnt = 0
@@ -195,35 +195,36 @@ def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
             rc_var.prevQp = define.VERY_FLAT_QP
 
 
-def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
+def CalcFullnessOffset(vPos, hPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
     if PRINT_FUNC_CALL_OPT: print("CalcFullnessOffset has called!!")
-    unity_scale = 1 << (define.RC_SCALE_BINARY_POINT)
-    throttleFrac = 0  # from throttleFrac in dscstate structure
+    unity_scale = (1 << (define.RC_SCALE_BINARY_POINT))
+    # throttleFrac = 0  # from throttleFrac in dscstate structure
+    increment = 0
 
     temp_scaleAdjustCounter = (rc_var.scaleAdjustCounter + 1)
+    case_dec = (rc_var.scaleAdjustCounter >= pps.scale_decrement_interval)
+    case_inc = (rc_var.scaleAdjustCounter >= pps.scale_increment_interval)
     flag1 = (groupCnt == 0)
     flag2 = ((vPos == 0) and (rc_var.currentScale > unity_scale))
-    case_dec = (temp_scaleAdjustCounter > pps.scale_decrement_interval)
-    case_inc = (temp_scaleAdjustCounter > pps.scale_increment_interval)
     flag3 = rc_var.scaleIncrementStart
 
     if (flag1):
         rc_var.currentScale = pps.initial_scale_value  # initial_scale_value = 32
         rc_var.scaleAdjustCounter = 1
 
-    elif (flag2 and (not case_dec)):  # Reduce scale at beginning of slice
-        rc_var.scaleAdjustCounter += 1
-
     elif (flag2 and case_dec):  # Reduce scale at beginning of slice
         rc_var.scaleAdjustCounter = 0
         rc_var.currentScale -= 1
 
-    elif (flag3 and (not case_inc)):
+    elif (flag2 and (not case_dec)):  # Reduce scale at beginning of slice
         rc_var.scaleAdjustCounter += 1
 
     elif (flag3 and case_inc):
         rc_var.scaleAdjustCounter = 0
         rc_var.currentScale += 1
+
+    elif (flag3 and (not case_inc)):
+        rc_var.scaleAdjustCounter += 1
 
     flag0 = (vPos == 0)
 
@@ -233,8 +234,8 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
         current_bpg_target = pps.first_line_bpg_ofs  # first_line_bpg_ofs =15
         increment = - (pps.first_line_bpg_ofs << define.OFFSET_FRACTIONAL_BITS)
 
-    elif (not flag0):
-        current_bpg_target = pps.nfl_bpg_offset  # nfl_bpg_offset = 288
+    else:
+        current_bpg_target = - (pps.nfl_bpg_offset >> define.OFFSET_FRACTIONAL_BITS)  # nfl_bpg_offset = 288
         increment = pps.nfl_bpg_offset
 
     ## Account for 2nd line boost
@@ -244,16 +245,17 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
 
     if (flag5 and (not flag4)):
         current_bpg_target += pps.second_line_bpg_offset
-        increment += -(pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
+        increment -= (pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
+
         rc_var.secondOffsetApplied = 1
         rc_var.rcXformOffset -= pps.second_line_offset_adj
 
     elif (flag5 and flag4):
         current_bpg_target += pps.second_line_bpg_offset
-        increment += -(pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
+        increment -= (pps.second_line_bpg_offset << define.OFFSET_FRACTIONAL_BITS)
 
     elif ((not flag5)):
-        current_bpg_target += (pps.nsl_bpg_offset >> define.OFFSET_FRACTIONAL_BITS)  # nsl_bpg_offset = 0
+        current_bpg_target -= (pps.nsl_bpg_offset >> define.OFFSET_FRACTIONAL_BITS)  # nsl_bpg_offset = 0
         increment += pps.nsl_bpg_offset
 
     # else:
@@ -265,16 +267,16 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
 
     ## Account for initial delay boost
     num_pixels = 0
-    pixelsInGroup = 3
+    # pixelsInGroup = 3
     flag6 = (pixelCount < pps.initial_xmit_delay)
     flag7 = (pixelCount == 0)
-    flag8 = (pps.scale_increment_interval and (not rc_var.scaleIncrementStart) and (vPos > 0) and (
-            rc_var.rcXformOffset > 0))
+    flag8 = ((pps.scale_increment_interval) and (not rc_var.scaleIncrementStart)
+             and (vPos > 0) and (rc_var.rcXformOffset > 0))
 
     if (flag6 and flag7):
-        num_pixels = pixelsInGroup
+        num_pixels = dsc_const.pixelsInGroup
         num_pixels = min(pps.initial_xmit_delay - pixelCount, num_pixels)
-        increment -= ((pps.bits_per_pixel) << (define.OFFSET_FRACTIONAL_BITS - 4))
+        increment -= ((pps.bits_per_pixel * num_pixels) << (define.OFFSET_FRACTIONAL_BITS - 4))
 
     elif (flag6 and (not flag7)):
         num_pixels = pixelCount - rc_var.prevPixelCount
@@ -287,11 +289,12 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
         rc_var.scaleIncrementStart = 1
 
     rc_var.prevPixelCount = pixelCount
-    current_bpg_target -= pps.slice_bpg_offset >> define.OFFSET_FRACTIONAL_BITS  # slice_bpg_offset = 68
+    current_bpg_target -= (pps.slice_bpg_offset >> (define.OFFSET_FRACTIONAL_BITS))  # slice_bpg_offset = 68
     increment += pps.slice_bpg_offset  # slice_bpg_offset = 68
-    throttleFrac += increment
-    rc_var.rcXformOffset += throttleFrac
-    throttleFrac = throttleFrac & ((1 << define.OFFSET_FRACTIONAL_BITS) - 1)
+
+    rc_var.throttleFrac += increment
+    rc_var.rcXformOffset += (rc_var.throttleFrac >> define.OFFSET_FRACTIONAL_BITS)
+    rc_var.throttleFrac = (rc_var.throttleFrac) & ((1 << define.OFFSET_FRACTIONAL_BITS) - 1)
 
     if (rc_var.rcXformOffset < pps.final_offset):
         rc_var.rcOffsetClampEnable = 1
@@ -299,10 +302,13 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
     if rc_var.rcOffsetClampEnable:
         rc_var.rcXformOffset = min(rc_var.rcXformOffset, pps.final_offset)
 
-    return [rc_var.currentScale, rc_var.rcXformOffset]
+    scale = rc_var.currentScale
+    bpg_offset = current_bpg_target
+
+    return [scale, bpg_offset]
 
 
-def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
+def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define, scale, bpg_offset):
     if PRINT_FUNC_CALL_OPT: print("RateControl has called!!")
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
@@ -319,17 +325,19 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
 
     # Add up estimated bits for the Group, i.e. as if VLC sample size matched max sample size
     rcSizeGroupPrev = rc_var.rcSizeGroup
-    rcSizeGroup = ((vlc_var.rcSizeUnit).sum()).item()
+    rcSizeGroup = ((vlc_var.rcSizeUnit[: dsc_const.unitsPerGroup]).sum()).item()
 
     # Set target number of bits per Group according to buffer fullness
     range_cfg = []
 
     ## Linear Transformation
-    throttle_offset = rc_var.rcXformOffset
+    throttle_offset = rc_var.rcXformOffset # from enc_main loop...
     throttle_offset -= pps.rc_model_size
 
     # *MODEL NOTE* MN_RC_XFORM
-    rcBufferFullness = ((rc_var.currentScale * (rc_var.bufferFullness + rc_var.rcXformOffset)) >> (define.RC_SCALE_BINARY_POINT))
+    rcBufferFullness = ((scale * (rc_var.bufferFullness + throttle_offset)) >> (define.RC_SCALE_BINARY_POINT))
+
+    print("[%d] [%d] scale : [%d], bpg_offset : [%d], throttle_offset : [%d]" %(vPos, hPos, scale, bpg_offset, throttle_offset))
 
     overflowAvoid = (rc_var.bufferFullness + rc_var.rcXformOffset) > define.OVERFLOW_AVOID_THRESHOLD
 
@@ -642,19 +650,25 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     """
     qlevel = 0
 
-    isluma = (cpnt == 0 or cpnt == 3)
-    isluma = isluma or ((pps.native_420) and (cpnt == 1))
+    isluma = ((cpnt == 0) or (cpnt == 3))
+    # isluma2 = ((isluma) or ((pps.native_420) and (cpnt == 1)))
 
     isYUV = (pps.dsc_version_minor == 2) and (dsc_const.cpntBitDepth[0] == dsc_const.cpntBitDepth[1])
 
-    if isluma:
+    if (isluma):
         qlevel = dsc_const.quantTableLuma[qp]
+
+    elif (pps.native_420 and (cpnt == 1)):
+        qlevel = dsc_const.quantTableLuma[qp]
+
     else:
         # QP adjustment for YCbCr mode, Default : YCgCo
-        if isYUV:
+        qlevel = dsc_const.quantTableChroma[qp]
+
+        if (isYUV):
             qlevel = max(0, qlevel - 1)
-        else:
-            qlevel = dsc_const.quantTableChroma[qp]
+        # else:
+        #     qlevel = dsc_const.quantTableChroma[qp]
 
     return qlevel
 
@@ -840,6 +854,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         #######################################################################
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
+        # print("qlevel [%d] [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d]" %(qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x))
 
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)
@@ -1147,7 +1162,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one[unit],
                 max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx)
 
-        print("[%d] [%d] cpnt : [%d] numBits is [%d]" %(vPos, hPos, unit, vlc_var.numBits))
+        # print("[%d] [%d] cpnt : [%d] numBits is [%d]" %(vPos, hPos, unit, vlc_var.numBits))
 
     # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
     #         max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
@@ -1457,7 +1472,7 @@ def HistoryLookup(ich_var, defines, pps, dsc_const, prevLine, entry, hPos, first
 def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sampModCnt, modMapQLevel, orig, prevLine):
     if PRINT_FUNC_CALL_OPT: print("IsErrorPassWithBestHistory has called!!")
     if (sampModCnt == 0):
-        ich_var.origWithinQerr = 1  # Reset wit no error
+        ich_var.origWithinQerr = 1  # Reset with no error
 
     max_qerr = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
 
@@ -1542,6 +1557,7 @@ def IsErrorPassWithBestHistory(ich_var, defines, pps, dsc_const, hPos, vPos, sam
         else:
             ich_var.origWithinQerr = 0
 
+    return ich_var.origWithinQerr
 
 def UpdateHistoryElement(pps, defines, dsc_const, ich_var, vlc_var, prevLine, hPos, vPos, recon):
     if PRINT_FUNC_CALL_OPT: print("UpdateHistoryElement has called!!")

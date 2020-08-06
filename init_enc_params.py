@@ -72,14 +72,14 @@ class initVlcVariables:
         ## REMOVED IN 2020.07.29 DEBUG #12
 
 class initRcVariables:
-    def __init__(self):
+    def __init__(self, pps):
         self.stQp = 0
         self.prevQp = 0
         self.prev2Qp = 0
         self.masterQp = 0
         self.bufferFullness = 0
         self.bpgFracAccum = 0
-        self.rcXformOffset = 0
+        self.rcXformOffset = (pps.initlal_offset + pps.second_line_offset_adj)
         self.throttleInt = 0
         self.nonFirstLineBpgTarget = 0
         self.currentScale = 0
@@ -100,6 +100,7 @@ class initRcVariables:
         self.mppState = 0
         self.prevFullness = 0
         self.scaleIncrementStart = 0
+        self.throttleFrac = 0
 
 class initDefines:
     def __init__(self, pps):

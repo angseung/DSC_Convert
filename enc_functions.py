@@ -142,10 +142,14 @@ def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
     flat_var.flatnessCurPos = isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
     flat_var.flatnessIdxMemory[flat_var.flatnessCnt] = supergroup_cnt
 
+    ## Flatness Debug...
+    # print("Current hPos :[%d], FlatnessType : [%d]" %(hPos, flat_var.flatnessCurPos))
+
     if (flat_var.flatnessMemory[flat_var.flatnessCnt] > 0):  # If determined as flat
         flat_var.flatnessCnt += 1
 
     flat_var.IsQpWithinFlat = isFlatnessInfoSent(pps, rc_var)
+
 
     if (supergroup_cnt == 0):
         flat_var.firstFlat = flat_var.prevFirstFlat
@@ -298,7 +302,7 @@ def CalcFullnessOffset(vPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_v
     return [rc_var.currentScale, rc_var.rcXformOffset]
 
 
-def RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
+def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define):
     if PRINT_FUNC_CALL_OPT: print("RateControl has called!!")
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
@@ -309,7 +313,7 @@ def RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, 
     curQp = 0
 
     # pixelCount moved to enc_main
-    # for i in range(sampModCnt):
+    # for i in range(sampModCnt):`
     #     ### pixelCount???
     #     pass
 
@@ -718,14 +722,14 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
                 max(max(a, blend_b), max(blend_d, blend_e)))
 
     else:  # Block prediction
-        # print("Bloack Prediction Used... [%d] [%d]" %(hPos, vPos))
+        # print("[%d] [%d] Bloack Prediction Used...[%d] " %(hPos, vPos, cpnt))
         bp_offset = predType - defines.PT_BLOCK
         p = (currLine[cpnt, max(hPos + defines.PADDING_LEFT - 1 - bp_offset, 0)]).item()
 
     # if (((vPos == 10) and (1266 <= hPos <= 1268))
     #     or ((vPos == 43) and (1755 <= hPos <= 1757))
     #     or ((vPos == 72) and (462 <= hPos <= 464))):
-    #     print("Prediction Value... [%d] [%d], method : [%d], Pixel Val [%d]" %(hPos, vPos, predType, p))
+    # print("[%d] [%d] cpnt : [%d], method : [%d], Pixel Val [%d]" %(hPos, vPos, cpnt, predType, p))
     return p
 
 
@@ -756,6 +760,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         if (pps.native_420):
             ####### TODO native_420 mode
             raise NotImplementedError
+
         else:
             pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred2use, sampModCnt,
                                    pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
@@ -1138,18 +1143,20 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     # get prefix and encode each units
     ## Todo AddBits function
 
-    # for unit in range(dsc_const.unitsPerGroup):
-    #     VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one[unit],
-    #             max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx)
+    for unit in range(dsc_const.unitsPerGroup):
+        VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one[unit],
+                max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx)
 
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
-            max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
-            max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1], ich_pfx)
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 2, groupCnt, add_prefix_one[2],
-            max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2], ich_pfx)
-    VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
-            max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
+        print("[%d] [%d] cpnt : [%d] numBits is [%d]" %(vPos, hPos, unit, vlc_var.numBits))
+
+    # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
+    #         max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
+    # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
+    #         max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1], ich_pfx)
+    # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 2, groupCnt, add_prefix_one[2],
+    #         max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2], ich_pfx)
+    # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
+    #         max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
 
     if (ich_var.ichSelected):
         encoding_bits = bits_ich_mode

@@ -111,6 +111,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
+
+        # if (hPos == 1270):
+        #     pass
+
         PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
                                              mapQLevel, maxResSize, rc_var.masterQp)
 
@@ -152,12 +156,12 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             rc_var.bufferFullness += vlc_var.codedGroupSize # Increase buffer fullness
             bufferFullness = rc_var.bufferFullness ## 2020.07.30 Revision
 
-            print("[%d] [%d] Current Buffer Fullness : [%d]" %(vPos, hPos, rc_var.bufferFullness))
+            # print("[%d] [%d] codedGroupSize : [%d] Current Buffer Fullness : [%d]"
+            #       %(vPos, hPos, vlc_var.codedGroupSize, rc_var.bufferFullness))
 
             if (bufferFullness > pps.rcb_bits):
                 ## This check may actually belong after tgt_bpg has been subtracted
-                print("The buffer model has overflowed.  This probably occurred due to an error in the")
-                print("rate control parameter programming.\n")
+                print("The buffer model has overflowed.  This probably occurred due to an error in the rate control parameter programming.")
                 print("ERROR: RCB overflow; size is %d, tried filling to %d", pps.rcb_bits, bufferFullness)
                 exit(1)
 
@@ -213,8 +217,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 if (pixelCount >= pps.initial_xmit_delay):
                     RemoveBitsEncoderBuffer(pps, rc_var, dsc_const)
 
-            RateControl(vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
-
+            RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines)
+            # print("Currnt Position : [%d] [%d], masterQp is [%d]" %(vPos, hPos, rc_var.masterQp))
             ## masterQp decision is done in Rate Control function...
             # rc_var.masterQp = rc_var.prevQp
 

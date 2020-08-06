@@ -212,9 +212,9 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             # throttle_offset = rc_var.rcXformOffset
             RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines, scale, bpg_offset)
-            # print("Currnt Position : [%d] [%d], masterQp is [%d]" %(vPos, hPos, rc_var.masterQp))
             ## masterQp decision is done in Rate Control function...
-            # rc_var.masterQp = rc_var.prevQp
+            rc_var.masterQp = rc_var.prevQp
+            print("Currnt Position : [%d] [%d], masterQp is [%d]" %(vPos, hPos, rc_var.masterQp))
 
             ### RESET RESIDUAL VALUES...
             vlc_var.midpointSelected[:] = 0

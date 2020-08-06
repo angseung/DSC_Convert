@@ -155,38 +155,47 @@ def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
         flat_var.firstFlat = flat_var.prevFirstFlat
         flat_var.flatnessType = flat_var.prevFlatnessType
 
-    if ((supergroup_cnt == 3) and flat_var.IsQpWithinFlat):
-        if (flat_var.firstFlat >= 0):
-            flat_var.prevWasFlat = 1
+    if (supergroup_cnt == 3):
+        if (flat_var.IsQpWithinFlat):
+            if (flat_var.firstFlat >= 0):
+                flat_var.prevWasFlat = 1
 
+            else:
+                flat_var.prevWasFlat = 0
+
+            flat_var.prevFirstFlat = -1
+
+            if (flat_var.prevWasFlat):
+                if ((flat_var.flatnessCnt >= 1) and (flat_var.flatnessMemory[0] > 0)):
+                    flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0].item()
+                    flat_var.prevFlatnessType = (flat_var.flatnessMemory[0].item() - 1)
+
+            else:
+                if (flat_var.flatnessCnt >= 1):
+                    flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0].item()
+                    flat_var.prevFlatnessType = (flat_var.flatnessMemory[0].item() - 1)
         else:
-            flat_var.prevWasFlat = 0
-
-        flat_var.prevFirstFlat = -1
-        if (flat_var.prevWasFlat):
-            if ((flat_var.flatnessCnt >= 1) and (flat_var.flatnessMemort[0] > 0)):
-                flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
-                flat_var.prevFlatnessType = (flat_var.flatnessMemory[0] - 1)
-
-        else:
-            if (flat_var.flatnessCnt >= 1):
-                flat_var.prevFirstFlat = flat_var.flatnessIdxMemory[0]
-                flat_var.prevFlatnessType = (flat_var.flatnessMemory[0] - 1)
-
-    elif ((supergroup_cnt == 3) and (not flat_var.IsQpWithinFlat)):
-        flat_var.prevFirstFlat = -1
+            flat_var.prevFirstFlat = -1
 
     flat_var.origIsFlat = 0
+
     if ((flat_var.firstFlat >= 0) and (supergroup_cnt == flat_var.firstFlat)):
         flat_var.origIsFlat = 1
 
+    # elif ((supergroup_cnt == 3) and (not flat_var.IsQpWithinFlat)):
+    #     flat_var.prevFirstFlat = -1
+    #
+    # flat_var.origIsFlat = 0
+    # if ((flat_var.firstFlat >= 0) and (supergroup_cnt == flat_var.firstFlat)):
+    #     flat_var.origIsFlat = 1
+
     ## *MODEL NOTE* MN_FLAT_QP_ADJ
-    if (hPos >= (pps.slice_width - 1)):
+    if (hPos >= (dsc_const.sliceWidth - 1)):
         flat_var.origIsFlat = 1
         flat_var.flatnessType = 1
 
     if (flat_var.origIsFlat and (rc_var.masterQp < pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][1])):
-        if ((flat_var.flatnessType == 0) or rc_var.masterQp < define.SOMEWHAT_FLAT_QP_THRESH):  # Somewhat flat
+        if ((flat_var.flatnessType == 0) or (rc_var.masterQp < define.SOMEWHAT_FLAT_QP_THRESH)):  # Somewhat flat
             rc_var.stQp = max(rc_var.stQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
             rc_var.prevQp = max(rc_var.prevQp - define.SOMEWHAT_FLAT_QP_DELTA, 0)
 
@@ -313,8 +322,10 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
-    rc_var.prevQp = rc_var.stQp
-    rc_var.prev2Qp = rc_var.prevQp
+    # rc_var.prevQp = rc_var.stQp
+    # rc_var.prev2Qp = rc_var.prevQp
+    prevQp = rc_var.stQp
+    prev2Qp = rc_var.prevQp
     stQp = 0
     curQp = 0
 
@@ -325,84 +336,88 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
 
     # Add up estimated bits for the Group, i.e. as if VLC sample size matched max sample size
     rcSizeGroupPrev = rc_var.rcSizeGroup
+    rcSizeGroup = 0
     rcSizeGroup = ((vlc_var.rcSizeUnit[: dsc_const.unitsPerGroup]).sum()).item()
 
     # Set target number of bits per Group according to buffer fullness
     range_cfg = []
 
     ## Linear Transformation
+    # Set target number of bits per Group according to buffer fullness
     throttle_offset = rc_var.rcXformOffset # from enc_main loop...
     throttle_offset -= pps.rc_model_size
 
     # *MODEL NOTE* MN_RC_XFORM
+    # Linear Transformation (6.8.2)
     rcBufferFullness = ((scale * (rc_var.bufferFullness + throttle_offset)) >> (define.RC_SCALE_BINARY_POINT))
 
-    print("[%d] [%d] scale : [%d], bpg_offset : [%d], throttle_offset : [%d]" %(vPos, hPos, scale, bpg_offset, throttle_offset))
+    # print("[%d] [%d] scale : [%d], bpg_offset : [%d], throttle_offset : [%d]" %(vPos, hPos, scale, bpg_offset, throttle_offset))
 
-    overflowAvoid = (rc_var.bufferFullness + rc_var.rcXformOffset) > define.OVERFLOW_AVOID_THRESHOLD
-
+    overflowAvoid = ((rc_var.bufferFullness + throttle_offset) > define.OVERFLOW_AVOID_THRESHOLD)
+    i = 0
+    j = 0
     ### Pick the correct range
     # *MODEL NOTE* MN_RC_LONG_TERM
-    thresh0 = pps.rc_buf_thresh[0] - pps.rc_model_size
-    thresh1 = pps.rc_buf_thresh[1] - pps.rc_model_size
-    thresh2 = pps.rc_buf_thresh[2] - pps.rc_model_size
-    thresh3 = pps.rc_buf_thresh[3] - pps.rc_model_size
-    thresh4 = pps.rc_buf_thresh[4] - pps.rc_model_size
-    thresh5 = pps.rc_buf_thresh[5] - pps.rc_model_size
-    thresh6 = pps.rc_buf_thresh[6] - pps.rc_model_size
-    thresh7 = pps.rc_buf_thresh[7] - pps.rc_model_size
-    thresh8 = pps.rc_buf_thresh[8] - pps.rc_model_size
-    thresh9 = pps.rc_buf_thresh[9] - pps.rc_model_size
-    thresh10 = pps.rc_buf_thresh[10] - pps.rc_model_size
-    thresh11 = pps.rc_buf_thresh[11] - pps.rc_model_size
-    thresh12 = pps.rc_buf_thresh[12] - pps.rc_model_size
-    thresh13 = pps.rc_buf_thresh[13] - pps.rc_model_size
+    thresh0 = (pps.rc_buf_thresh[0].item() - pps.rc_model_size)
+    thresh1 = (pps.rc_buf_thresh[1].item() - pps.rc_model_size)
+    thresh2 = (pps.rc_buf_thresh[2].item() - pps.rc_model_size)
+    thresh3 = (pps.rc_buf_thresh[3].item() - pps.rc_model_size)
+    thresh4 = (pps.rc_buf_thresh[4].item() - pps.rc_model_size)
+    thresh5 = (pps.rc_buf_thresh[5].item() - pps.rc_model_size)
+    thresh6 = (pps.rc_buf_thresh[6].item() - pps.rc_model_size)
+    thresh7 = (pps.rc_buf_thresh[7].item() - pps.rc_model_size)
+    thresh8 = (pps.rc_buf_thresh[8].item() - pps.rc_model_size)
+    thresh9 = (pps.rc_buf_thresh[9].item() - pps.rc_model_size)
+    thresh10 = (pps.rc_buf_thresh[10].item() - pps.rc_model_size)
+    thresh11 = (pps.rc_buf_thresh[11].item() - pps.rc_model_size)
+    thresh12 = (pps.rc_buf_thresh[12].item() - pps.rc_model_size)
+    thresh13 = (pps.rc_buf_thresh[13].item() - pps.rc_model_size)
 
-    range_cond14 = (rcBufferFullness > thresh13)
-    range_cond13 = (thresh12 < rcBufferFullness <= thresh13)
-    range_cond12 = (thresh11 < rcBufferFullness <= thresh12)
-    range_cond11 = (thresh10 < rcBufferFullness <= thresh11)
-    range_cond10 = (thresh9 < rcBufferFullness <= thresh10)
-    range_cond9 = (thresh8 < rcBufferFullness <= thresh9)
-    range_cond8 = (thresh7 < rcBufferFullness <= thresh8)
+    range_cond0 = (rcBufferFullness > thresh13)
+    range_cond1 = (thresh12 < rcBufferFullness <= thresh13)
+    range_cond2 = (thresh11 < rcBufferFullness <= thresh12)
+    range_cond3 = (thresh10 < rcBufferFullness <= thresh11)
+    range_cond4 = (thresh9 < rcBufferFullness <= thresh10)
+    range_cond5 = (thresh8 < rcBufferFullness <= thresh9)
+    range_cond6 = (thresh7 < rcBufferFullness <= thresh8)
     range_cond7 = (thresh6 < rcBufferFullness <= thresh7)
-    range_cond6 = (thresh5 < rcBufferFullness <= thresh6)
-    range_cond5 = (thresh4 < rcBufferFullness <= thresh5)
-    range_cond4 = (thresh3 < rcBufferFullness <= thresh4)
-    range_cond3 = (thresh2 < rcBufferFullness <= thresh3)
-    range_cond2 = (thresh1 < rcBufferFullness <= thresh2)
-    range_cond1 = (thresh0 < rcBufferFullness <= thresh1)
-    range_cond0 = (rcBufferFullness < thresh0)
+    range_cond8 = (thresh5 < rcBufferFullness <= thresh6)
+    range_cond9 = (thresh4 < rcBufferFullness <= thresh5)
+    range_cond10 = (thresh3 < rcBufferFullness <= thresh4)
+    range_cond11 = (thresh2 < rcBufferFullness <= thresh3)
+    range_cond12 = (thresh1 < rcBufferFullness <= thresh2)
+    range_cond13 = (thresh0 < rcBufferFullness <= thresh1)
+    range_cond14 = (rcBufferFullness < thresh0)
 
-    if range_cond0:
+    if range_cond14:
         j = 0
-    elif range_cond1:
+    elif range_cond13:
         j = 1
-    elif range_cond2:
+    elif range_cond12:
         j = 2
-    elif range_cond3:
+    elif range_cond11:
         j = 3
-    elif range_cond4:
+    elif range_cond10:
         j = 4
-    elif range_cond5:
+    elif range_cond9:
         j = 5
-    elif range_cond6:
+    elif range_cond8:
         j = 6
     elif range_cond7:
         j = 7
-    elif range_cond8:
+    elif range_cond6:
         j = 8
-    elif range_cond9:
+    elif range_cond5:
         j = 9
-    elif range_cond10:
+    elif range_cond4:
         j = 10
-    elif range_cond11:
+    elif range_cond3:
         j = 11
-    elif range_cond12:
+    elif range_cond2:
         j = 12
-    elif range_cond13:
+    elif range_cond1:
         j = 13
-    elif range_cond14:
+    elif range_cond0:
         j = 14
 
     if (rcBufferFullness > 0):
@@ -412,8 +427,8 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     selected_range = rc_var.prevRange
     rc_var.prevRange = j
 
-    bpg = (int(pps.bits_per_pixel * sampModCnt + 8) >> 4)  # Rounding fractional bits
-    rcTgtBitGroup = max(0, bpg + (pps.rc_range_parameters[selected_range][2]).item() + rc_var.rcXformOffset)
+    bpg = (((pps.bits_per_pixel * (dsc_const.pixelsInGroup)) + 8) >> 4)  # Rounding fractional bits
+    rcTgtBitGroup = max(0, bpg + (pps.rc_range_parameters[selected_range][2]).item() + bpg_offset)
     min_QP = (pps.rc_range_parameters[selected_range][0]).item()
     max_QP = (pps.rc_range_parameters[selected_range][1]).item()
     tgtMinusOffset = max(0, rcTgtBitGroup - pps.rc_tgt_offset_lo)
@@ -423,16 +438,16 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     ### How about make this param canstant??
     ### SW
     predActivity = 0
-    if (pps.native_420):
+    if (pps.native_420): # 420 Mode
         predActivity = rc_var.prevQp + max(vlc_var.predictedSize[0].item(), vlc_var.predictedSize[1].item()) + vlc_var.predictedSize[2].item()
 
-    elif (pps.native_422):
-        predActivity = rc_var.prevQp + ((vlc_var.predictedSize.sum()) >> 1)
-
-    else:  # 444 Mode
+    elif (not (pps.native_422)): # 444 Mode
         predActivity = rc_var.prevQp + vlc_var.predictedSize[0].item() + max(vlc_var.predictedSize[1].item(), vlc_var.predictedSize[2].item())
 
-    bitSaveThresh = dsc_const.cpntBitDepth[0].item() + dsc_const.cpntBitDepth[1].item() - 2
+    else: # 422 Mode
+        predActivity = rc_var.prevQp + ((vlc_var.predictedSize.sum()).item() >> 1)
+
+    bitSaveThresh = (dsc_const.cpntBitDepth[0].item() + dsc_const.cpntBitDepth[1].item()) - 2
 
     ### *MODEL NOTE* MN_RC_SHORT_TERM
     ## bitSaveMode Decision Start...
@@ -458,7 +473,7 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
         rc_var.mppState += 1
 
     elif bs_case3:
-        rc_var.bitSaveMode = rc_var.bitSaveMode
+        rc_var.bitSaveMode = rc_var.bitSaveMode # Don't reset
 
     elif bs_case4:
         rc_var.bitSaveMode = max(1, rc_var.bitSaveMode)
@@ -475,43 +490,41 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     ## make condition to implement switch-case method
     ######### stqp Condition decision..######
     cond1 = overflowAvoid
-    cond2 = (rc_var.bufferFullness <= 192)
+    cond2 = (rc_var.bufferFullness < 192)
     cond3 = (rc_var.bitSaveMode == 2)
     cond4 = (rc_var.bitSaveMode == 1)
-    cond5 = (rc_var.rcSizeGroup == define.UNITS_PER_GROUP)
+    cond5 = (rc_var.rcSizeGroup == dsc_const.unitsPerGroup)
     cond6 = (rc_var.rcSizeGroup < tgtMinusOffset)
-    # & (vlc_var.codedGroupSize < tgtMinusOffset))
     cond7 = ((rc_var.bufferFullness >= 64) and (vlc_var.codedGroupSize > tgtPlusOffset))
     cond8 = (not cond7)
     ##########################################
 
     if cond2:  # underflow Condition
-        rc_var.stQp = min_QP  # cond2
+        stQp = min_QP  # cond2
 
     elif cond3:
-        max_QP = min(pps.bits_per_component * 2 - 1, max_QP + 1)
-        rc_var.stQp = rc_var.prevQp + 2
+        max_QP = min((pps.bits_per_component * 2 - 1), (max_QP + 1))
+        stQp = prevQp + 2
 
     elif cond4:
-        max_QP = min(pps.bits_per_component * 2 - 1, max_QP + 1)
-        rc_var.stQp = rc_var.prevQp
+        max_QP = min((pps.bits_per_component * 2 - 1), (max_QP + 1))
+        stQp = prevQp
 
     elif cond5:
-        min_QP = max(min_QP - 4, 0)
-        rc_var.stQp = (rc_var.prevQp - 1)  # cond5
+        min_QP = max((min_QP - 4), 0)
+        stQp = (prevQp - 1)  # cond5
 
     elif cond6:
-        rc_var.stQp = (rc_var.prevQp - 1)
+        stQp = (prevQp - 1)
 
     # avoid increasing QP immediately after edge
     elif cond7:  ## DO QP increment logic
-        curQp = max(rc_var.prevQp, min_QP)
+        curQp = max(prevQp, min_QP)
 
         inc_cond1 = (curQp == rc_var.prev2Qp)
         inc_cond2 = ((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor))
         inc_cond3 = (rc_var.prev2Qp < curQp)
-        inc_cond4 = (((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) and
-                     (curQp < pps.rc_quant_incr_limit0))
+        inc_cond4 = ((((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) and (curQp < pps.rc_quant_incr_limit0)))
         inc_cond5 = (curQp < pps.rc_quant_incr_limit1)
 
         case1 = ((inc_cond1) and (inc_cond2))
@@ -521,27 +534,30 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
         case5 = ((not inc_cond1) and (not inc_cond3) and (inc_cond5))
         case6 = ((not inc_cond1) and (not inc_cond3) and (not inc_cond5))
 
-        if (case1 or case3 or case5): rc_var.stQp = (curQp + incr_amount)
-        if (case2 or case4 or case6): rc_var.stQp = curQp
+        if (case1 or case3 or case5): stQp = (curQp + incr_amount)
+        if (case2 or case4 or case6): stQp = curQp
 
     elif cond8:
-        rc_var.stQp = rc_var.prevQp
+        stQp = prevQp
 
     elif cond1:  # overflow avoid condition
-        rc_var.stQp = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1, 0]  # cond1
+        stQp = pps.rc_range_parameters[define.NUM_BUF_RANGES - 1][0].item()  # cond1
 
-    rc_var.stQp = CLAMP(rc_var.stQp, min_QP, max_QP)
+    stQp = CLAMP(stQp, min_QP, max_QP)
 
-    rc_var.rcSizeGroupPrev = rc_var.rcSizeGroup
+    rc_var.rcSizeGroupPrev = rcSizeGroup
+    rc_var.rcSizeGroup = rcSizeGroup
 
     ## check rc buffer overflow
     is_overflowed = (rc_var.bufferFullness > pps.rcb_bits)
 
-    if is_overflowed:
+    if (is_overflowed):
         raise ValueError("The buffer model has overflowed.")
 
+    rc_var.stQp = stQp
+    rc_var.prevQp = prevQp
     # masterQp update for next group
-    rc_var.masterQp = rc_var.prevQp
+    # rc_var.masterQp = rc_var.prevQp
 
     # print("RATE CONTROL FINISHED SUCCESSFULLY")
 

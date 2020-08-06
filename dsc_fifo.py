@@ -54,9 +54,12 @@ class DSCFifo:
         if PRINT_DEBUG_OPT:
             print("LETS WRITE %d BITS INTO FIFO, Value is %d" %(nbits, d))
             print(type(d))
+        try:
+            if (d.bit_length() > nbits):
+                raise ValueError("Input Bit length is larger than 'nbit'")
 
-        if (d.bit_length() > nbits):
-            raise ValueError("Input Bit length is larger than 'nbit'")
+        except:
+            a = 0
 
         if (self.fullness + nbits > self.size):
             if PRINT_DEBUG_OPT:

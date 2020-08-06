@@ -120,7 +120,7 @@ def ceil_log2(val):
 
 def FILT3(a,b,c):
     if PRINT_FUNC_CALL_OPT: print("FILT3 has called!!")
-    return (a + 2 * b + c + 2) / 2
+    return int((a + 2 * b + c + 2) >> 2)
 
 
 def CLAMP(X, MIN, MAX):

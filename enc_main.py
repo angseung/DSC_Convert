@@ -74,6 +74,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     while (not done):
         # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
+        qp = rc_var.masterQp
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
             origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
@@ -83,7 +84,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         ## TODO write below codes into each corresponding functions
         if (sampModCnt == 0):
 
-            modified_qp = min(2*pps.bits_per_component - 1, rc_var.masterQp + 2)
+            modified_qp = min(2 * pps.bits_per_component - 1, rc_var.masterQp + 2)
             flat_qp = max(rc_var.masterQp - pps.somewhat_flat_qp_delta, 0)
 
             for i in range(defines.NUM_COMPONENTS):
@@ -214,7 +215,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines, scale, bpg_offset)
             ## masterQp decision is done in Rate Control function...
             rc_var.masterQp = rc_var.prevQp
-            print("Currnt Position : [%d] [%d], masterQp is [%d]" %(vPos, hPos, rc_var.masterQp))
+            # print("[%d] [%d], masterQp is [%d] firstFlat : [%d], flatnessType : [%d], numBits : [%d], ichSelected : [%d]"
+            #       %(vPos, hPos, rc_var.masterQp, flat_var.firstFlat, flat_var.flatnessType, vlc_var.numBits, ich_var.ichSelected))
 
             ### RESET RESIDUAL VALUES...
             vlc_var.midpointSelected[:] = 0

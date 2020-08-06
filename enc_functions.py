@@ -622,7 +622,7 @@ def MaxResidualSize(pps, dsc_const, cpnt, qp):
     return dsc_const.cpntBitDepth[cpnt] - qlevel
 
 
-def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
+def FindMidpoint(hPos, dsc_const, defines, cpnt, qlevel, currLine):
     if PRINT_FUNC_CALL_OPT: print("FindMidpoint has called!!")
     """
     :param cpntBitDepth[cpnt]:
@@ -630,9 +630,11 @@ def FindMidpoint(dsc_const, cpnt, qlevel, recon_value):
     :param recon_value
     :return:
     """
-    recon_value = recon_value.astype(np.int32)
-    midrange = 1 << dsc_const.cpntBitDepth[cpnt]
-    midrange = midrange / 2
+    # recon_value = recon_value.astype(np.int32)
+    h_offset_array_idx = int(hPos / defines.SAMPLES_PER_UNIT) * defines.SAMPLES_PER_UNIT
+    recon_value = currLine[cpnt, (min((dsc_const.sliceWidth - 1), (h_offset_array_idx - 1))) + defines.PADDING_LEFT]
+    midrange = (1 << dsc_const.cpntBitDepth[cpnt].item())
+    midrange = int(midrange / 2)
     #print(midrange)
     return int(midrange + (recon_value % (1 << qlevel)))
 
@@ -703,16 +705,26 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
     e = prevLine[cpnt, h_offset_array_idx + 2].item()
     a = currLine[cpnt, h_offset_array_idx - 1].item()
 
-    filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2], prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx])
-    filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1], prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1])
-    filt_d = FILT3(prevLine[cpnt, h_offset_array_idx], prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2])
+    val_a = prevLine[cpnt, h_offset_array_idx - 2].item()
+    val_b = prevLine[cpnt, h_offset_array_idx - 1].item()
+    val_c = prevLine[cpnt, h_offset_array_idx].item()
+    val_d = prevLine[cpnt, h_offset_array_idx + 1].item()
+    val_e = prevLine[cpnt, h_offset_array_idx + 2].item()
+
+    filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2].item(), prevLine[cpnt, h_offset_array_idx - 1].item(),
+                   prevLine[cpnt, h_offset_array_idx].item())
+    filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1].item(), prevLine[cpnt, h_offset_array_idx].item(),
+                   prevLine[cpnt, h_offset_array_idx + 1].item())
+    filt_d = FILT3(prevLine[cpnt, h_offset_array_idx].item(), prevLine[cpnt, h_offset_array_idx + 1].item(),
+                   prevLine[cpnt, h_offset_array_idx + 2].item())
 
     ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than (sliceWidth - 3)
     if (h_offset_array_idx == (dsc_const.sliceWidth - 2)):
         filt_e = 0
 
     else:
-        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1], prevLine[cpnt, h_offset_array_idx + 2], prevLine[cpnt, h_offset_array_idx + 3])
+        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1].item(), prevLine[cpnt, h_offset_array_idx + 2].item(),
+                       prevLine[cpnt, h_offset_array_idx + 3].item())
 
     if (predType == defines.PT_LEFT):  # Only at first line
         p = a
@@ -759,7 +771,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
     # if (((vPos == 10) and (1266 <= hPos <= 1268))
     #     or ((vPos == 43) and (1755 <= hPos <= 1757))
     #     or ((vPos == 72) and (462 <= hPos <= 464))):
-    # print("[%d] [%d] cpnt : [%d], method : [%d], Pixel Val [%d]" %(hPos, vPos, cpnt, predType, p))
+    print("qLevel : [%d], [%d] [%d] cpnt : [%d], method : [%d], Pixel Val [%d]" %(qLevel, hPos, vPos, cpnt, predType, p))
     return p
 
 
@@ -777,7 +789,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
     for unit in range(dsc_const.unitsPerGroup):
         cpnt = unit
 
-        qlevel = mapQLevel[cpnt]
+        qlevel = mapQLevel[cpnt].item()
 
         if (vPos == 0):
             pred2use = defines.PT_LEFT  # PT_LEFT is selected only at first line
@@ -793,7 +805,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
 
         else:
             pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred2use, sampModCnt,
-                                   pred_var.quantizedResidual[unit], qp, dsc_const.cpntBitDepth)
+                                   pred_var.quantizedResidual[unit], qlevel, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)
         actual_x = origLine[cpnt, hPos + defines.PADDING_LEFT].item()
@@ -801,8 +813,7 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         err_raw = int(actual_x - pred_x)  # get Quantized Residual
         err_raw_q = QuantizeResidual(err_raw, qlevel)  # quantized residual check
 
-        pred_mid = FindMidpoint(dsc_const, cpnt, qlevel,
-                                currLine[cpnt, min(dsc_const.sliceWidth - 1, hPos) + defines.PADDING_LEFT])
+        pred_mid = FindMidpoint(hPos, dsc_const, defines, cpnt, qlevel, currLine)
         err_mid = actual_x - pred_mid
         err_mid_q = QuantizeResidual(err_mid, qlevel)  # MPP quantized residual check
 
@@ -812,14 +823,14 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         # Midpoint residuals need to be bounded to BPC-QP in size, this is for some corner cases:
         # If an MPP residual exceeds this size, the residual is changed to the nearest residual with a size of cpntBitDepth - qLevel.
         # FIND NEAREST Q_RESIDUAL (6.4.5)
-        max_residual_bit = maxResSize[cpnt]
+        max_residual_bit = maxResSize[cpnt].item()
 
         if (err_mid_size > max_residual_bit):
-            if err_mid_q > 0:
+            if (err_mid_q > 0):
                 err_mid_q = 2 ** (max_residual_bit - 1) - 1
 
             else:
-                err_mid_q = -1 * 2 ** (max_residual_bit - 1)
+                err_mid_q = -1 * (2 ** (max_residual_bit - 1))
 
         ######### Save quantizedResidual #######
         pred_var.quantizedResidual[unit, sampModCnt] = err_raw_q
@@ -870,7 +881,8 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         #######################################################################
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
-        # print("qlevel [%d] [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d]" %(qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x))
+        # print("qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d]"
+        #      %(qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x))
 
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)
@@ -1048,8 +1060,11 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     suffix_size = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
     add_prefix_one = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.int32)
 
+    for i in range(dsc_const.numSsps):
+        start_fullness[i] = FIFOs[i].fullness
+
     #########################  Set control varaibles #########################
-    if ((pps.bits_per_component == 0) and (3 * mapQLevel[0] <= 3 - adj_predicted_size[0])):
+    if ((pps.bits_per_component == 0) and (3 * mapQLevel[0].item() <= (3 - adj_predicted_size[0].item()))):
         ich_disallow = 1  # No ICH allowed for special case
 
     else:
@@ -1063,7 +1078,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
     ####### Calculate maximum bit-width required for each component #########
     # maxError is the largest error value among identical component
     for unit in range(dsc_const.unitsPerGroup):
-        if forceMpp or (pred_var.max_size[unit] == maxResSize[unit]):  # Use MPP
+        if (forceMpp or (pred_var.max_size[unit] == maxResSize[unit])):  # Use MPP
             vlc_var.midpointSelected[unit] = 1  # MPP error
             max_size[unit] = maxResSize[unit]  # maximum bit-width
             max_err_p_mode[unit] = pred_var.maxMidError[unit]
@@ -1244,8 +1259,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
         if ((FIFOs[i].fullness - start_fullness[i].item()) > dsc_const.maxSeSize[i].item()):
         # if (prefix_size[i] + suffix_size[i] > dsc_const.maxSeSize[i]):
-            #print("SE Size FIFO too small")
-            pass
+            print("SE Size FIFO too small")
 
     if (groupCnt > (pps.muxWordSize + defines.MAX_SE_SIZE - 3)):
         ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos)

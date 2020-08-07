@@ -6,7 +6,7 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
-PRED_VAL_PRINT = False
+PRED_VAL_PRINT = True
 SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
@@ -758,11 +758,11 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
         else:
             blend_c = c + diff
 
-        diff = CLAMP(filt_b - b, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
+        diff = CLAMP(filt_b - b, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
         blend_b = b + diff
-        diff = CLAMP(filt_d - d, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
+        diff = CLAMP(filt_d - d, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
         blend_d = d + diff
-        diff = CLAMP(filt_e - e, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
+        diff = CLAMP(filt_e - e, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
         blend_e = e + diff
 
         if (sampModCnt == 0):
@@ -870,9 +870,9 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
         recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
         #### PIXEL VAL DEBUG....####
-        if (vPos > 0):
-            print("[%d] [%d] qlevel : [%d], cpnt : [%d] actual_x : [%d], pred_x : [%d], recon_x : [%d], pred2use : [%d]"
-                  %(hPos, vPos, qlevel, cpnt, actual_x, pred_x, recon_x, pred2use))
+        # if (vPos > 0):
+        #     print("[%d] [%d] qlevel : [%d], cpnt : [%d] actual_x : [%d], pred_x : [%d], recon_x : [%d], pred2use : [%d]"
+        #           %(hPos, vPos, qlevel, cpnt, actual_x, pred_x, recon_x, pred2use))
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)
@@ -899,7 +899,7 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
 
-        if (PRED_VAL_PRINT):
+        if (PRED_VAL_PRINT and (vPos == 4)):
             print("masterQp : [%d], qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d] recon_mid : [%d], numBits : [%d]"
                   %(qp, qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x, recon_mid, vlc_var.numBits))
 

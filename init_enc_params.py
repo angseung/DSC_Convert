@@ -70,6 +70,7 @@ class initVlcVariables:
         self.forceMpp = 0
         #self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         ## REMOVED IN 2020.07.29 DEBUG #12
+        self.SW_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_DEBUG_PYTHON.txt", "w")
 
 class initRcVariables:
     def __init__(self, pps):

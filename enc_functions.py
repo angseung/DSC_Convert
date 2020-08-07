@@ -6,11 +6,12 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
-PRED_VAL_PRINT = True
+PRED_VAL_PRINT = False
 SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
-VLCUNIT_PRINT_OPT = True
+VLCUNIT_PRINT_OPT = False
+VLCUNIT_FILE_OPT = False
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -1357,21 +1358,27 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
         if (flat_var.prevFirstFlat < 0):
             addbits(vlc_var, FIFO, 0, 1)
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]" % (vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
         else:
             addbits(vlc_var, FIFO, 1, 1)
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] prevFirstFlat 'One' is Written [%d]" % (vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] prevFirstFlat 'One' is Written [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
     ################################ Insert flat type ####################################
     if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
 
         if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] flatnessType is Written" %(vPos, hPos, unit))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] flatnessType is Written [%d]" %(vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] flatnessType is Written [%d]\n" %(vPos, hPos, unit, FIFO.fullness))
 
         else:
             # flat_var.flatnessType = 0
             addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] firstFlat is Written" % (vPos, hPos, unit))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] firstFlat is Written [%d]" % (vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] firstFlat is Written [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
             # pass
 
     ################################ ICH mode ####################################
@@ -1381,14 +1388,20 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
             if ich_var.prevIchSelected: # ICH -> ICH
                 addbits(vlc_var, FIFO, 1, ich_pfx) ## prefix is just bit "1"
+                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] ICH -> ICH Case... [%d]" % (vPos, hPos, unit, FIFO.fullness))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] ICH -> ICH Case... [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
             else:                       # P -> ICH
                 addbits(vlc_var, FIFO, 0, ich_pfx) ##
+                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] P -> ICH Case... [%d]" % (vPos, hPos, unit, FIFO.fullness))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] P -> ICH Case... [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
             for i in range(dsc_const.pixelsInGroup):
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS) # insert suffix
+                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]" % (vPos, hPos, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]\n" % (vPos, hPos, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
 
         #### ICH Lookup (unit > 0, suffix)
         else:
@@ -1397,22 +1410,45 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
+                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]" % (vPos, hPos, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]\n" % (vPos, hPos, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
 
-    else:
+    else: ## P-Mode
         if (add_prefix_one):
             addbits(vlc_var, FIFO, 1, prefix_size)
+            if (VLCUNIT_PRINT_OPT): print(
+                "[%d] [%d] cpnt : [%d] P-Mode Prefix with 1 is Written [%d]" % (vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
+                "[%d] [%d] cpnt : [%d] P-Mode Prefix with 1 is Written [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
         else:
             addbits(vlc_var, FIFO, 0, prefix_size)
+            if (VLCUNIT_PRINT_OPT): print(
+                "[%d] [%d] cpnt : [%d] P-Mode Prefix without 1 is Written [%d]" % (vPos, hPos, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
+                "[%d] [%d] cpnt : [%d] P-Mode Prefix without 1 is Written [%d]\n" % (vPos, hPos, unit, FIFO.fullness))
 
         for i in range(defines.SAMPLES_PER_UNIT):
 
             if (max_size == maxResSize): # Select MPP
                 addbits(vlc_var, FIFO, pred_var.quantizedResidualMid.item(unit, i), suffix_size)
+                if (VLCUNIT_PRINT_OPT): print(
+                    "[%d] [%d] cpnt : [%d] MPP QR [%d] is Written [%d]"
+                    % (vPos, hPos, unit, pred_var.quantizedResidualMid.item(unit, i), FIFO.fullness))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
+                    "[%d] [%d] cpnt : [%d] MPP QR [%d] is Written [%d]\n"
+                    % (vPos, hPos, unit, pred_var.quantizedResidualMid.item(unit, i), FIFO.fullness))
 
             else:
                 addbits(vlc_var, FIFO, pred_var.quantizedResidual.item(unit, i), suffix_size)
-
+                if (VLCUNIT_PRINT_OPT): print(
+                    "[%d] [%d] cpnt : [%d] Pred QR [%d] (Pred_Type : [%d]) is Written [%d]"
+                    % (vPos, hPos, unit, pred_var.quantizedResidual.item(unit, i),
+                       pred_var.prevLinePred[int(hPos / dsc_const.pixelsInGroup)].item() ,FIFO.fullness))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
+                    "[%d] [%d] cpnt : [%d] Pred QR [%d] (Pred_Type : [%d]) is Written [%d]\n"
+                    % (vPos, hPos, unit, pred_var.quantizedResidual.item(unit, i),
+                       pred_var.prevLinePred[int(hPos / dsc_const.pixelsInGroup)].item() ,FIFO.fullness))
 
 def IchDecision(pps, defines, flat_var, dsc_const, ich_var, alt_pfx, max_err_p_mode, bits_p_mode, bits_ich_mode):
     if PRINT_FUNC_CALL_OPT: print("IchDecision has called!!")

@@ -1303,11 +1303,10 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
     if (rc_var.chunkPixelTimes >= dsc_const.sliceWidth):
         adjustment_bits = pps.chunk_size * 8 - rc_var.numBitsChunk
         rc_var.bufferFullness -= adjustment_bits
-
-    rc_var.bpgFracAccum = 0
-    rc_var.numBitsChunk = 0
-    rc_var.chunkCount += 1
-    rc_var.chunkPixelTimes = 0
+        rc_var.bpgFracAccum = 0
+        rc_var.numBitsChunk = 0
+        rc_var.chunkCount += 1
+        rc_var.chunkPixelTimes = 0
 
 
 def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos):

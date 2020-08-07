@@ -3,6 +3,8 @@ from init_enc_params import *
 from enc_functions import *
 from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
+PRINT_QP_OPT = 0
+MAP_QLEVEL_PRINT = 0
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
@@ -97,6 +99,10 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 pred_size = vlc_var.predictedSize[i] + (oldQLevel[i] - mapQLevel[i])
                 adj_predicted_size[i] = CLAMP(pred_size, 0, maxResSize[i] - 1)
 
+            if MAP_QLEVEL_PRINT:
+                print("[%d] [%d] masterQp : [%d], mapQLevel : [%d] [%d] [%d], numbits : [%d]"
+                       %(vPos, hPos, rc_var.masterQp, modMapQLevel[0], modMapQLevel[1], modMapQLevel[2], vlc_var.numBits))
+
             ## Reset valid control of ICH
             ## Reset ICH at beginning of each line if multiple slices per line
             if (((hPos == 0) and (vPos == 0)) or # Beginning of slice
@@ -108,7 +114,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
                 #     ich_var.valid[idx] = 0
 
         #################### Predict operation ###################
-        PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
+        PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt,
                                              mapQLevel, maxResSize, rc_var.masterQp)
 
         #################### P or ICH Selection ###################
@@ -213,10 +219,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             # throttle_offset = rc_var.rcXformOffset
             RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, defines, scale, bpg_offset)
+
             ## masterQp decision is done in Rate Control function...
             rc_var.masterQp = rc_var.prevQp
-            # print("[%d] [%d], masterQp is [%d] firstFlat : [%d], flatnessType : [%d], numBits : [%d], ichSelected : [%d]"
-            #       %(vPos, hPos, rc_var.masterQp, flat_var.firstFlat, flat_var.flatnessType, vlc_var.numBits, ich_var.ichSelected))
+
+            if PRINT_QP_OPT:
+                print("[%d] [%d], masterQp is [%d] firstFlat : [%d], flatnessType : [%d], numBits : [%d], ichSelected : [%d], numBits : [%d]"
+                      %(vPos, hPos, rc_var.masterQp, flat_var.firstFlat, flat_var.flatnessType, vlc_var.numBits, ich_var.ichSelected, vlc_var.numBits))
 
             ### RESET RESIDUAL VALUES...
             vlc_var.midpointSelected[:] = 0

@@ -6,6 +6,10 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
+PRED_VAL_PRINT = False
+SAMPLE_VAL_PRINT = False
+RC_PRINT_OPT = False
+STQP_PRINT_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -319,6 +323,11 @@ def CalcFullnessOffset(vPos, hPos, pixelCount, groupCnt, pps, define, dsc_const,
 
 def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc_var, rc_var, flat_var, define, scale, bpg_offset):
     if PRINT_FUNC_CALL_OPT: print("RateControl has called!!")
+
+    if STQP_PRINT_OPT:
+        print("[%d] [%d] masterQp : [%d] stQp : [%d] prevQp : [%d] numBits : [%d]"
+              %(vPos, hPos, rc_var.masterQp, rc_var.stQp, rc_var.prevQp, vlc_var.numBits))
+
     ## prev_fullness moved to main
     # prev_fullness = rc_var.bufferFullness
     mpsel = (vlc_var.midpointSelected).sum()
@@ -351,7 +360,7 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     # Linear Transformation (6.8.2)
     rcBufferFullness = ((scale * (rc_var.bufferFullness + throttle_offset)) >> (define.RC_SCALE_BINARY_POINT))
 
-    # print("[%d] [%d] scale : [%d], bpg_offset : [%d], throttle_offset : [%d]" %(vPos, hPos, scale, bpg_offset, throttle_offset))
+    if RC_PRINT_OPT : print("[%d] [%d] scale : [%d], bpg_offset : [%d], throttle_offset : [%d]" %(vPos, hPos, scale, bpg_offset, throttle_offset))
 
     overflowAvoid = ((rc_var.bufferFullness + throttle_offset) > define.OVERFLOW_AVOID_THRESHOLD)
     i = 0
@@ -493,8 +502,8 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     cond2 = (rc_var.bufferFullness < 192)
     cond3 = (rc_var.bitSaveMode == 2)
     cond4 = (rc_var.bitSaveMode == 1)
-    cond5 = (rc_var.rcSizeGroup == dsc_const.unitsPerGroup)
-    cond6 = (rc_var.rcSizeGroup < tgtMinusOffset)
+    cond5 = (rcSizeGroup == dsc_const.unitsPerGroup)
+    cond6 = (rcSizeGroup < tgtMinusOffset)
     cond7 = ((rc_var.bufferFullness >= 64) and (vlc_var.codedGroupSize > tgtPlusOffset))
     cond8 = (not cond7)
     ##########################################
@@ -771,12 +780,13 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
     # if (((vPos == 10) and (1266 <= hPos <= 1268))
     #     or ((vPos == 43) and (1755 <= hPos <= 1757))
     #     or ((vPos == 72) and (462 <= hPos <= 464))):
-    print("qLevel : [%d], [%d] [%d] cpnt : [%d], method : [%d], Pixel Val [%d]" %(qLevel, hPos, vPos, cpnt, predType, p))
+    if SAMPLE_VAL_PRINT:
+        print("qLevel : [%d], [%d] [%d] cpnt : [%d], method : [%d], Pixel Val [%d]" %(qLevel, hPos, vPos, cpnt, predType, p))
     return p
 
 
 # output : pred_var
-def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt, mapQLevel,
+def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLine, prevLine, hPos, vPos, sampModCnt, mapQLevel,
                    maxResSize, qp):
     if PRINT_FUNC_CALL_OPT: print("PredictionLoop has called!!")
     """
@@ -810,11 +820,11 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)
         actual_x = origLine[cpnt, hPos + defines.PADDING_LEFT].item()
 
-        err_raw = int(actual_x - pred_x)  # get Quantized Residual
+        err_raw = (actual_x - pred_x)  # get Quantized Residual
         err_raw_q = QuantizeResidual(err_raw, qlevel)  # quantized residual check
 
         pred_mid = FindMidpoint(hPos, dsc_const, defines, cpnt, qlevel, currLine)
-        err_mid = actual_x - pred_mid
+        err_mid = (actual_x - pred_mid)
         err_mid_q = QuantizeResidual(err_mid, qlevel)  # MPP quantized residual check
 
         err_raw_size = FindResidualSize(err_raw_q)
@@ -881,8 +891,10 @@ def PredictionLoop(pred_var, pps, dsc_const, defines, origLine, currLine, prevLi
         #######################################################################
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
-        # print("qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d]"
-        #      %(qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x))
+
+        if (PRED_VAL_PRINT):
+            print("masterQp : [%d], qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d] recon_mid : [%d], numbits : [%d]"
+                  %(qp, qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x, recon_mid, vlc_var.numBits))
 
 
 ## TODO check hPos and cpnt dependency (to parallelize computations)

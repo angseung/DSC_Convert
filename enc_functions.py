@@ -6,12 +6,13 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
-PRED_VAL_PRINT = True
+PRED_VAL_PRINT = False
 SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
-VLCUNIT_FILE_OPT = True
+VLCUNIT_FILE_OPT = False
+SW_FLAT_DEBUG_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -119,14 +120,19 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
     if (is_end_of_slice or is_check_skip):
         flat_type_val = 0
+
     elif (t1_very_flat):
         flat_type_val = 2
+
     elif (t1_somewhat_flat):
         flat_type_val = 1
+
     elif (t2_very_flat):
         flat_type_val = 2
+
     elif (t2_somewhat_flat):
         flat_type_val = 1
+
     else:
         flat_type_val = 0
 
@@ -134,7 +140,7 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
 
 
 ########### TODO hPos is not accurate
-def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
+def FlatnessAdjustment(vPos, hPos, groupCount, pps, rc_var, flat_var, define, dsc_const, origLine, flatQLevel):
     if PRINT_FUNC_CALL_OPT: print("FlatnessAdjustment has called!!")
     # pixelsInGroup = 3
     supergroup_cnt = (groupCount % define.GROUPS_PER_SUPERGROUP)
@@ -150,12 +156,21 @@ def FlatnessAdjustment(hPos, groupCount, pps, rc_var, flat_var, define, dsc_cons
 
     ## Flatness Debug...
     # print("Current hPos :[%d], FlatnessType : [%d]" %(hPos, flat_var.flatnessCurPos))
+    if (SW_FLAT_DEBUG_OPT):
+        flat_var.SW_FLAT_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], flatnessMemory : [%d], flatnessCurPos : [%d], flatnessIdxMemory : [%d], signal : [%d]\n"
+                                            % (vPos,
+                                               hPos,
+                                               rc_var.masterQp,
+                                               flat_var.flatnessMemory[flat_var.flatnessCnt].item(),
+                                               flat_var.flatnessCurPos,
+                                               flat_var.flatnessIdxMemory[flat_var.flatnessCnt].item(),
+                                               isFlatnessInfoSent(pps, rc_var)))
+
 
     if (flat_var.flatnessMemory[flat_var.flatnessCnt] > 0):  # If determined as flat
         flat_var.flatnessCnt += 1
 
     flat_var.IsQpWithinFlat = isFlatnessInfoSent(pps, rc_var)
-
 
     if (supergroup_cnt == 0):
         flat_var.firstFlat = flat_var.prevFirstFlat
@@ -899,7 +914,7 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
         #############################  Final output ###########################
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
 
-        if (PRED_VAL_PRINT and (vPos == 4)):
+        if (PRED_VAL_PRINT):
             print("masterQp : [%d], qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d] recon_mid : [%d], numBits : [%d]"
                   %(qp, qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x, recon_mid, vlc_var.numBits))
 

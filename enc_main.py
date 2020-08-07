@@ -5,6 +5,7 @@ from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
 PRINT_QP_OPT = False
 MAP_QLEVEL_PRINT = False
+SW_QP_DEBUG_OPT = True
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
@@ -74,9 +75,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        # print("NOW PROCESSING [%04d][%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        # print("NOW PROCESSING [%04d] [%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         qp = rc_var.masterQp
+        if (SW_QP_DEBUG_OPT):
+            rc_var.SW_QP_DEBUG_PYTHON.write("[%d] [%d] Current masterQp : [%d]\n" % (vPos, hPos, rc_var.masterQp))
+            print("[%d] [%d] Current masterQp : [%d]" % (vPos, hPos, rc_var.masterQp))
+
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts
             origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
@@ -135,7 +140,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         if ((sampModCnt == (dsc_const.pixelsInGroup - 1)) or (hPos == (dsc_const.sliceWidth - 1))):
             ## Last Pixel in a Group "OR" Outbound pixel outside of slice
             #print("hPos is %d, campModCnt is %d" %(hPos, sampModCnt))
-            FlatnessAdjustment(hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
+            FlatnessAdjustment(vPos, hPos, groupCnt, pps, rc_var, flat_var, defines, dsc_const, origLine, flatQLevel)
 
             if (sampModCnt < (dsc_const.pixelsInGroup - 1)):
 

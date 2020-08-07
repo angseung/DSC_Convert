@@ -58,6 +58,7 @@ class initFlatVariables:
         self.flatnessCnt = 0
         self.IsQpWithinFlat = False
         self.prevWasFlat = 0
+        self.SW_FLAT_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_FLAT_DEBUG_PYTHON.txt", "w")
 
 class initVlcVariables:
     def __init__(self, defines):
@@ -102,6 +103,7 @@ class initRcVariables:
         self.prevFullness = 0
         self.scaleIncrementStart = 0
         self.throttleFrac = 0
+        self.SW_QP_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_QP_DEBUG_PYTHON.txt", "w")
 
 class initDefines:
     def __init__(self, pps):

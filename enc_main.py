@@ -259,21 +259,23 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
                     if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
                         tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
                     else:
                         tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt,
-                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                            CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
             # for PADDING RIGHT
             for mod_hPos in range(defines.PADDING_LEFT + dsc_const.sliceWidth, lbufWidth):
                 for cpnt in range(dsc_const.numComponents):
 
                     if ((pps.native_420) and (cpnt == (dsc_const.numComponents - 1))):
-                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                        tmp_prevLine[cpnt + (vPos % 2), mod_hPos] = \
+                            ampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
                     else:
-                        tmp_prevLine[cpnt, mod_hPos] = SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + pps.slice_width - 1)])
+                        tmp_prevLine[cpnt, mod_hPos] = \
+                            SampToLineBuf(dsc_const, pps, cpnt, currLine[cpnt, CLAMP(mod_hPos, defines.PADDING_LEFT, defines.PADDING_LEFT + dsc_const.sliceWidth - 1)])
 
             # Deliver the value from "tmp_prevLine" to "prevLine"
             for cpnt in range(dsc_const.numComponents):

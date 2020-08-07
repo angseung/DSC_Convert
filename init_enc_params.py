@@ -162,6 +162,11 @@ class initDscConstants:
         else: # Error
             raise NotImplementedError
 
+        if (pps.line_buf_depth == 0):
+            self.lineBufDepth = 16
+        else:
+            self.lineBufDepth = pps.line_buf_depth
+
         self.full_ich_err_precision = 0 ## TODO check the variable
 
         if pps.native_420 or pps.native_422:

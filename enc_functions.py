@@ -11,7 +11,7 @@ SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
-VLCUNIT_FILE_OPT = False
+VLCUNIT_FILE_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -662,11 +662,14 @@ def QuantizeResidual(err, qlevel):
     # err = err.astype(np.int32)
     # print(type(err))
     # print(err)
+    try:
+        if (err > 0):
+            eq = int(err + QuantOffset(qlevel)) >> qlevel
+        else:
+            eq = -1 * (int(QuantOffset(qlevel) - err) >> qlevel)
 
-    if err > 0:
-        eq = (err + QuantOffset(qlevel)) >> qlevel
-    else:
-        eq = -1 * ((QuantOffset(qlevel) - err) >> qlevel)
+    except:
+        a = 0
     return eq
 
 
@@ -747,7 +750,7 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
                       0, (1 << cpntBitDepth[cpnt]) - 1)
 
     elif (predType == defines.PT_MAP):  # MMAP
-        diff = CLAMP(filt_c - c, -(QuantDivisor(qLevel) / 2), QuantDivisor(qLevel) / 2)
+        diff = CLAMP(filt_c - c, - int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
 
         if (hPos < defines.SAMPLES_PER_UNIT):
             blend_c = a
@@ -867,7 +870,9 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
         recon_x = int(CLAMP(pred_x + (err_raw_q << qlevel), 0, maxval))
 
         #### PIXEL VAL DEBUG....####
-        # print("[%d] [%d] cpnt : [%d] actual_x : [%d], recon_x : [%d]" %(hPos, vPos, cpnt, actual_x, recon_x))
+        if (vPos > 0):
+            print("[%d] [%d] qlevel : [%d], cpnt : [%d] actual_x : [%d], pred_x : [%d], recon_x : [%d], pred2use : [%d]"
+                  %(hPos, vPos, qlevel, cpnt, actual_x, pred_x, recon_x, pred2use))
 
         if (dsc_const.full_ich_err_precision):
             absErr = abs(actual_x - recon_x)
@@ -1694,7 +1699,7 @@ def SampToLineBuf(dsc_const, pps, cpnt, x):
     if PRINT_FUNC_CALL_OPT: print("SampToLineBuf has called!!")
     ## Line Storage (6.3)
     ## Allocate Storage to Store Reconstructed Pixel Value
-    shift_amount = max(dsc_const.cpntBitDepth[cpnt] - pps.line_buf_depth, 0)
+    shift_amount = max(dsc_const.cpntBitDepth[cpnt] - dsc_const.lineBufDepth, 0)
     storedSample = 0
 
     if (shift_amount > 0):
@@ -1704,7 +1709,8 @@ def SampToLineBuf(dsc_const, pps, cpnt, x):
         rounding = 0
 
         # Max value = 2^line_buf_depth - 1
-        storedSample = min((x + rounding) >> shift_amount, (1 << pps.line_buf_depth) - 1)
+
+    storedSample = min((x + rounding) >> shift_amount, (1 << dsc_const.lineBufDepth) - 1)
 
     return_val = (storedSample << shift_amount)
     return return_val

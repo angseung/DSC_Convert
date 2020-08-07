@@ -6,10 +6,11 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
-PRED_VAL_PRINT = False
+PRED_VAL_PRINT = True
 SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
-STQP_PRINT_OPT = True
+STQP_PRINT_OPT = False
+VLCUNIT_PRINT_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -893,7 +894,7 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
         currLine[cpnt, hPos + defines.PADDING_LEFT] = recon_x
 
         if (PRED_VAL_PRINT):
-            print("masterQp : [%d], qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d] recon_mid : [%d], numbits : [%d]"
+            print("masterQp : [%d], qlevel : [%d], [%d] [%d] cpnt : [%d] actual_x : [%d] Pred_x : [%d] recon_x : [%d] recon_mid : [%d], numBits : [%d]"
                   %(qp, qlevel, vPos, hPos, cpnt, actual_x, pred_x, recon_x, recon_mid, vlc_var.numBits))
 
 
@@ -1203,18 +1204,18 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
 
     for unit in range(dsc_const.unitsPerGroup):
         VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one[unit],
-                max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx)
+                max_size[unit], prefix_size[unit], suffix_size[unit], maxResSize[unit], FIFOs[unit], ich_pfx, vPos, hPos)
 
         # print("[%d] [%d] cpnt : [%d] numBits is [%d]" %(vPos, hPos, unit, vlc_var.numBits))
 
     # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 0, groupCnt, add_prefix_one[0],
-    #         max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx)
+    #         max_size[0], prefix_size[0], suffix_size[0], maxResSize[0], FIFOs[0], ich_pfx, vPos, hPos)
     # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 1, groupCnt, add_prefix_one[1],
-    #         max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1], ich_pfx)
+    #         max_size[1], prefix_size[1], suffix_size[1], maxResSize[1], FIFOs[1], ich_pfx, vPos, hPos)
     # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 2, groupCnt, add_prefix_one[2],
-    #         max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2], ich_pfx)
+    #         max_size[2], prefix_size[2], suffix_size[2], maxResSize[2], FIFOs[2], ich_pfx, vPos, hPos)
     # VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, 3, groupCnt, add_prefix_one[3],
-    #         max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx)
+    #         max_size[3], prefix_size[3], suffix_size[3], maxResSize[3], FIFOs[3], ich_pfx, vPos, hPos)
 
     if (ich_var.ichSelected):
         encoding_bits = bits_ich_mode
@@ -1228,7 +1229,7 @@ def VLCGroup(pps, defines, dsc_const, pred_var, ich_var, rc_var, vlc_var, flat_v
         suffix_size[2] = defines.ICH_BITS
         suffix_size[3] = defines.ICH_BITS
 
-        vlc_var.rcSizeUnit[0] = dsc_const.pixelsInGroup * defines.ICH_BITS + 1
+        vlc_var.rcSizeUnit[0] = (dsc_const.pixelsInGroup * defines.ICH_BITS + 1)
         vlc_var.rcSizeUnit[1] = 0
         vlc_var.rcSizeUnit[2] = 0
         vlc_var.rcSizeUnit[3] = 0
@@ -1348,7 +1349,7 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, 
 
 
 def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, unit, groupCnt, add_prefix_one,
-            max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx):
+            max_size, prefix_size, suffix_size, maxResSize, FIFO, ich_pfx, vPos, hPos):
     if PRINT_FUNC_CALL_OPT: print("VLCunit has called!!")
 
     ################################ Insert flat flag ####################################
@@ -1365,10 +1366,12 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
         if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] flatnessType is Written" %(vPos, hPos, unit))
 
         else:
             # flat_var.flatnessType = 0
             addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] cpnt : [%d] firstFlat is Written" % (vPos, hPos, unit))
             # pass
 
     ################################ ICH mode ####################################

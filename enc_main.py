@@ -3,8 +3,8 @@ from init_enc_params import *
 from enc_functions import *
 from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
-PRINT_QP_OPT = 0
-MAP_QLEVEL_PRINT = 0
+PRINT_QP_OPT = False
+MAP_QLEVEL_PRINT = False
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################

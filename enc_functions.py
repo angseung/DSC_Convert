@@ -83,40 +83,40 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
             if (is_veryflat1_failed):
                 t1_very_flat = False
 
-        # test2_condition = (not (t1_very_flat or t1_somewhat_flat))
-        test2_condition = (is_somewhatflat1_falied and is_veryflat1_failed)
+    # test2_condition = (not (t1_very_flat or t1_somewhat_flat))
+    test2_condition = (not (t1_somewhat_flat or t1_very_flat))
 
-        # Left adjacent isn't flat, but current group & group to the right is flat
+    # Left adjacent isn't flat, but current group & group to the right is flat
 
-        #### Flat Test 2
-        if (test2_condition):
-            for cpnt in range(define.NUM_COMPONENTS):
-                # vf_thresh = pps.flatness_det_thresh
-                max_val = -1
-                min_val = 99999
+    #### Flat Test 2
+    if (test2_condition):
+        for cpnt in range(define.NUM_COMPONENTS):
+            # vf_thresh = pps.flatness_det_thresh
+            max_val = -1
+            min_val = 99999
 
-                for j in range(fc2_start, fc2_end):
-                    pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
-                    ## TODO : fix origline out of bound problem in flatness test 2...
-                    ## Implemented temporarily pass keyword...
-                    ##
-                    # try:
-                    #     pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
-                    #
-                    # except:
-                    #     pass
+            for j in range(fc2_start, fc2_end):
+                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                ## TODO : fix origline out of bound problem in flatness test 2...
+                ## Implemented temporarily pass keyword...
+                ##
+                # try:
+                #     pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                #
+                # except:
+                #     pass
 
-                    if (max_val < pixel_val): max_val = pixel_val
-                    if (min_val > pixel_val): min_val = pixel_val
+                if (max_val < pixel_val): max_val = pixel_val
+                if (min_val > pixel_val): min_val = pixel_val
 
-                is_somewhatflat2_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
-                is_veryflat2_failed = ((max_val - min_val) > vf_thresh)
+            is_somewhatflat2_falied = ((max_val - min_val) > max(vf_thresh, QuantDivisor(thresh[cpnt])))
+            is_veryflat2_failed = ((max_val - min_val) > vf_thresh)
 
-                if (is_somewhatflat2_falied):
-                    t2_somewhat_flat = False
+            if (is_somewhatflat2_falied):
+                t2_somewhat_flat = False
 
-                if (is_veryflat2_failed):
-                    t2_very_flat = False
+            if (is_veryflat2_failed):
+                t2_very_flat = False
 
     if (is_end_of_slice or is_check_skip):
         flat_type_val = 0

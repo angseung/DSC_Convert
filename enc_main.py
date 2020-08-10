@@ -5,7 +5,7 @@ from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
 PRINT_QP_OPT = False
 MAP_QLEVEL_PRINT = False
-SW_QP_DEBUG_OPT = True
+SW_QP_DEBUG_OPT = False
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
@@ -86,6 +86,9 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             ## Get input image when the first pixel of each line starts
             origLine[0 : dsc_const.numComponents, :] = 0 ## Clear OrigLine Buffer...
             origLine[0 : dsc_const.numComponents, (defines.PADDING_LEFT) : ] = PopulateOrigLine(pps, dsc_const, hPos, vPos, pic)
+            if (SW_ORIG_DEBUG_OPT):
+                for i in range(origLine.shape[1]):
+                    flat_var.SW_ORIG_DEBUG_PYTHON.write("[%d] [%d] Orig_Pixel : [%d]\n" %(vPos, hPos, pixel_val))
 
         ################ Initialization ###################
         ## TODO write below codes into each corresponding functions

@@ -42,6 +42,8 @@ class initPredVariables:
         self.prevLinePred = np.zeros(int((dsc_const.sliceWidth + defines.PRED_BLK_SIZE - 1)
                                          / defines.PRED_BLK_SIZE), ).astype(np.int32) ## 2020.07.27 added
 
+        self.SW_PREV_DEBUG_PYTHON = open("SW_PREV_DEBUG_PY.txt", "w");
+
 
 class initFlatVariables:
     def __init__(self, defines):
@@ -59,6 +61,8 @@ class initFlatVariables:
         self.IsQpWithinFlat = False
         self.prevWasFlat = 0
         self.SW_FLAT_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_FLAT_DEBUG_PYTHON.txt", "w")
+        self.SW_ORIG_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_FLAT_ORIG_PYTHON.txt", "w")
+
 
 class initVlcVariables:
     def __init__(self, defines):

@@ -13,6 +13,8 @@ STQP_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
 VLCUNIT_FILE_OPT = False
 SW_FLAT_DEBUG_OPT = True
+# SW_ORIG_DEBUG_OPT = True
+SW_PREV_DEBUG_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -41,7 +43,7 @@ def isFlatnessInfoSent(pps, rc_var):
     return is_flat_signaled
 
 
-def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel):
+def isOrigFlatHIndex(vPos, hPos, origLine, flat_var, rc_var, define, dsc_const, pps, flatQLevel):
     if PRINT_FUNC_CALL_OPT: print("isOrigFlatHIndex has called!!")
     fc1_start = 0
     fc1_end = 4
@@ -69,7 +71,9 @@ def isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
             for i in range(fc1_start, fc1_end):
                 #if PRINT_DEBUG_OPT: print("CURRENT hPos is %d, i is %d" %(hPos, i))
 
-                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i]
+                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + i].item()
+                # if (SW_ORIG_DEBUG_OPT):
+                #     flat_var.SW_ORIG_DEBUG_PYTHON.write("[%d] [%d] Orig_Pixel : [%d]\n" %(vPos, hPos, pixel_val))
 
                 if (max_val < pixel_val): max_val = pixel_val
                 if (min_val > pixel_val): min_val = pixel_val
@@ -149,9 +153,8 @@ def FlatnessAdjustment(vPos, hPos, groupCount, pps, rc_var, flat_var, define, ds
     if (supergroup_cnt == 0):
         flat_var.flatnessCnt = 0
 
-    flat_var.flatnessMemory[flat_var.flatnessCnt] = isOrigFlatHIndex(flatness_index, origLine, rc_var, define, dsc_const,
-                                                                    pps, flatQLevel)
-    flat_var.flatnessCurPos = isOrigFlatHIndex(hPos, origLine, rc_var, define, dsc_const, pps, flatQLevel)
+    flat_var.flatnessMemory[flat_var.flatnessCnt] = isOrigFlatHIndex(vPos, hPos, origLine, flat_var, rc_var, define, dsc_const, pps, flatQLevel)
+    flat_var.flatnessCurPos = isOrigFlatHIndex(vPos, hPos, origLine, flat_var, rc_var, define, dsc_const, pps, flatQLevel)
     flat_var.flatnessIdxMemory[flat_var.flatnessCnt] = supergroup_cnt
 
     ## Flatness Debug...
@@ -677,14 +680,21 @@ def QuantizeResidual(err, qlevel):
     # err = err.astype(np.int32)
     # print(type(err))
     # print(err)
-    try:
-        if (err > 0):
-            eq = int(err + QuantOffset(qlevel)) >> qlevel
-        else:
-            eq = -1 * (int(QuantOffset(qlevel) - err) >> qlevel)
 
-    except:
-        a = 0
+    if (err > 0):
+        eq = int(err + QuantOffset(qlevel)) >> qlevel
+    else:
+        eq = -1 * (int(QuantOffset(qlevel) - err) >> qlevel)
+
+    # try:
+    #     if (err > 0):
+    #         eq = int(err + QuantOffset(qlevel)) >> qlevel
+    #     else:
+    #         eq = -1 * (int(QuantOffset(qlevel) - err) >> qlevel)
+    #
+    # except:
+    #     a = 0
+
     return eq
 
 
@@ -720,7 +730,7 @@ def MapQpToQlevel(pps, dsc_const, qp, cpnt):
     return qlevel
 
 
-def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
+def SamplePredict(defines, pred_var, dsc_const, cpnt, hPos, vPos, prevLine, currLine, predType, sampModCnt, groupQuantizedResidual,
                   qLevel, cpntBitDepth):
     if PRINT_FUNC_CALL_OPT: print("SamplePredict has called!!")
     # TODO h_offset_array_idx is equal to group count value
@@ -734,38 +744,53 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
     e = prevLine[cpnt, h_offset_array_idx + 2].item()
     a = currLine[cpnt, h_offset_array_idx - 1].item()
 
+    if (SW_PREV_DEBUG_OPT):
+        pred_var.SW_PREV_DEBUG_PYTHON.write("[%d] [%d] cpnt : [%d], a : [%d], b : [%d], c : [%d], d : [%d], e : [%d], qLevel : [%d]\n"
+                                            %(vPos, hPos, cpnt, a, b, c, d, e, qLevel))
+
     val_a = prevLine[cpnt, h_offset_array_idx - 2].item()
     val_b = prevLine[cpnt, h_offset_array_idx - 1].item()
     val_c = prevLine[cpnt, h_offset_array_idx].item()
     val_d = prevLine[cpnt, h_offset_array_idx + 1].item()
     val_e = prevLine[cpnt, h_offset_array_idx + 2].item()
 
-    filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2].item(), prevLine[cpnt, h_offset_array_idx - 1].item(),
+    filt_c = FILT3(prevLine[cpnt, h_offset_array_idx - 2].item(),
+                   prevLine[cpnt, h_offset_array_idx - 1].item(),
                    prevLine[cpnt, h_offset_array_idx].item())
-    filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1].item(), prevLine[cpnt, h_offset_array_idx].item(),
+    filt_b = FILT3(prevLine[cpnt, h_offset_array_idx - 1].item(),
+                   prevLine[cpnt, h_offset_array_idx].item(),
                    prevLine[cpnt, h_offset_array_idx + 1].item())
-    filt_d = FILT3(prevLine[cpnt, h_offset_array_idx].item(), prevLine[cpnt, h_offset_array_idx + 1].item(),
+    filt_d = FILT3(prevLine[cpnt, h_offset_array_idx].item(),
+                   prevLine[cpnt, h_offset_array_idx + 1].item(),
                    prevLine[cpnt, h_offset_array_idx + 2].item())
+
+    # aaa = 0
 
     ## Exception : "filt_e" value is 0 when h_offset_array_idx is larger than (sliceWidth - 3)
     if (h_offset_array_idx == (dsc_const.sliceWidth - 2)):
         filt_e = 0
 
     else:
-        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1].item(), prevLine[cpnt, h_offset_array_idx + 2].item(),
+        filt_e = FILT3(prevLine[cpnt, h_offset_array_idx + 1].item(),
+                       prevLine[cpnt, h_offset_array_idx + 2].item(),
                        prevLine[cpnt, h_offset_array_idx + 3].item())
 
     if (predType == defines.PT_LEFT):  # Only at first line
         p = a
         if (sampModCnt == 1):
-            p = CLAMP(a + (groupQuantizedResidual[0] * QuantDivisor(qLevel)), 0, (1 << cpntBitDepth[cpnt]) - 1)
+            p = CLAMP(a + (groupQuantizedResidual[0].item() * QuantDivisor(qLevel)),
+                      0,
+                      (1 << cpntBitDepth[cpnt].item()) - 1)
 
         elif (sampModCnt == 2):
-            p = CLAMP(a + (groupQuantizedResidual[0] + groupQuantizedResidual[1]) * QuantDivisor(qLevel),
-                      0, (1 << cpntBitDepth[cpnt]) - 1)
+            p = CLAMP(a + (groupQuantizedResidual[0].item() + groupQuantizedResidual[1].item()) * QuantDivisor(qLevel),
+                      0,
+                      (1 << cpntBitDepth[cpnt].item()) - 1)
 
     elif (predType == defines.PT_MAP):  # MMAP
-        diff = CLAMP(filt_c - c, - int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
+        diff = CLAMP(filt_c - c,
+                     - int(QuantDivisor(qLevel) / 2),
+                     int(QuantDivisor(qLevel) / 2))
 
         if (hPos < defines.SAMPLES_PER_UNIT):
             blend_c = a
@@ -773,22 +798,29 @@ def SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred
         else:
             blend_c = c + diff
 
-        diff = CLAMP(filt_b - b, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
+        diff = CLAMP(filt_b - b,
+                     -int(QuantDivisor(qLevel) / 2),
+                     int(QuantDivisor(qLevel) / 2))
         blend_b = b + diff
-        diff = CLAMP(filt_d - d, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
+        diff = CLAMP(filt_d - d,
+                     -int(QuantDivisor(qLevel) / 2),
+                     int(QuantDivisor(qLevel) / 2))
         blend_d = d + diff
-        diff = CLAMP(filt_e - e, -int(QuantDivisor(qLevel) / 2), int(QuantDivisor(qLevel) / 2))
+        diff = CLAMP(filt_e - e,
+                     -int(QuantDivisor(qLevel) / 2),
+                     int(QuantDivisor(qLevel) / 2))
         blend_e = e + diff
 
         if (sampModCnt == 0):
-            p = CLAMP(a + blend_b - blend_c, min(a, blend_b), max(a, blend_b))
+            p = CLAMP(a + blend_b - blend_c,
+                      min(a, blend_b),
+                      max(a, blend_b))
         elif (sampModCnt == 1):
             p = CLAMP(a + blend_d - blend_c + (groupQuantizedResidual[0] * QuantDivisor(qLevel)),
                       min(min(a, blend_b), blend_d),
                       max(max(a, blend_b), blend_d))
         else:
-            p = CLAMP(
-                a + blend_e - blend_c + (groupQuantizedResidual[0] + groupQuantizedResidual[1]) * QuantDivisor(qLevel),
+            p = CLAMP(a + blend_e - blend_c + (groupQuantizedResidual[0].item() + groupQuantizedResidual[1].item()) * QuantDivisor(qLevel),
                 min(min(a, blend_b), min(blend_d, blend_e)),
                 max(max(a, blend_b), max(blend_d, blend_e)))
 
@@ -834,7 +866,7 @@ def PredictionLoop(pred_var, pps, dsc_const, vlc_var, defines, origLine, currLin
             raise NotImplementedError
 
         else:
-            pred_x = SamplePredict(defines, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred2use, sampModCnt,
+            pred_x = SamplePredict(defines, pred_var, dsc_const, cpnt, hPos, vPos, prevLine, currLine, pred2use, sampModCnt,
                                    pred_var.quantizedResidual[unit], qlevel, dsc_const.cpntBitDepth)
 
         ####### Calculate error for (blokc-prediction and midpoint-prediciton)

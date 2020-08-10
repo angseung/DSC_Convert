@@ -3,6 +3,7 @@ import os
 from PIL import Image
 from dsc_fifo import *
 PRINT_FUNC_CALL_OPT = False
+SW_ORIG_DEBUG_OPT = False
 
 def addbits(vlc_var, FIFO, data, nbits):
     if PRINT_FUNC_CALL_OPT: print("addbits has called!!")
@@ -145,6 +146,9 @@ def QuantOffset(a):
     return arr[a]
 
 def rgb2ycocg(pps, im):
+    if(SW_ORIG_DEBUG_OPT):
+        SW_ORIG_DEBUG_FILE = open("ORIG_DEBUG_PY.txt", "w")
+
     im_yuv = np.zeros(im.shape, dtype = np.uint32)
     half = 1 << (pps.bitsPerPixel - 1)
     r = 0
@@ -178,4 +182,9 @@ def rgb2ycocg(pps, im):
             # a = [y, co, cg]
             # a = 0
 
+            if (SW_ORIG_DEBUG_OPT):
+                SW_ORIG_DEBUG_FILE.write("Y : [%d] Co : [%d], Cg : [%d]\n" %(y, co, cg))
+
+    if (SW_ORIG_DEBUG_OPT):
+        SW_ORIG_DEBUG_FILE.close()
     return im_yuv

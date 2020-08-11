@@ -5,7 +5,7 @@ from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
 PRINT_QP_OPT = False
 MAP_QLEVEL_PRINT = False
-SW_QP_DEBUG_OPT = True
+SW_QP_DEBUG_OPT = False
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
@@ -75,7 +75,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        # print("NOW PROCESSING [%04d] [%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        print("NOW PROCESSING [%04d] [%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         qp = rc_var.masterQp
         if (SW_QP_DEBUG_OPT):

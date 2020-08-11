@@ -2,6 +2,7 @@ import numpy as np
 from init_pps_params import initPps
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
+BUF_BIT_DEBUG_OPT = True
 
 class DSCBuffer():
 
@@ -15,6 +16,10 @@ class DSCBuffer():
         ## Number of bits read/written post-mux
         self.postMuxNumBits = 0 ## Pointer for data[i, :] Vector.
         self.buf_size = (self.data).shape[0]
+
+        self.BIT_DSC_PYTHON = open("BUF_BIT_DSC_PYTHON.txt", "wb")
+        self.FIFO_DSC_PYTHON = open("SW_FIFO_DEBUG_PYTHON.txt", "w")
+
 
         return None
 
@@ -55,6 +60,7 @@ def write_dsc_data(path, buf, pps):
                         print("WRITING VALUE : %x" %val)
 
                     val = val.to_bytes(1, byteorder = 'big')
+                    if (BUF_BIT_DEBUG_OPT): (buf.BIT_DSC_PYTHON).write(val)
                     f.write(val)
 
                 current_idx[sx] += nbytes

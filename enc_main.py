@@ -75,7 +75,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ###########################################################
     ######################## Main Loop ########################
     while (not done):
-        print("NOW PROCESSING [%04d] [%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
+        # print("NOW PROCESSING [%04d] [%04d]TH LINE IN A SCLICE..." %(hPos, vPos))
         #################### Get input line ###################
         qp = rc_var.masterQp
         if (SW_QP_DEBUG_OPT):
@@ -300,6 +300,13 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
 
             if (vPos >= pps.slice_height):
                 done = 1
+                buf.BIT_DSC_PYTHON.close()
+                buf.FIFO_DSC_PYTHON.close()
+                flat_var.SW_FLAT_DEBUG_PYTHON.close()
+                flat_var.SW_ORIG_DEBUG_PYTHON.close()
+                vlc_var.SW_DEBUG_PYTHON.close()
+                rc_var.SW_QP_DEBUG_PYTHON.close()
+
 
     ## while Done!
 

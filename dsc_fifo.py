@@ -1,5 +1,6 @@
 import numpy as np
 PRINT_DEBUG_OPT = False
+BIT_DEBUG_OPT = False
 
 class DSCFifo:
     def __init__(self, size):
@@ -7,9 +8,12 @@ class DSCFifo:
         self.size = 8 * size # in bit unit...
         self.fullness = 0
         self.read_ptr = 0
-        self.write_prt = 0
+        self.write_ptr = 0
         self.max_fullness = 0
         self.byte_ctr = 0
+
+        ## BITSTREAM FILE DEBUG ONLY...
+        self.BIT_DSC_PYTHON = open("BIT_DSC_PYTHON.txt", "w")
 
     def fifo_free(self):
         self.data[:, :] = 0
@@ -78,10 +82,10 @@ class DSCFifo:
 
         for i in range(nbits):
             b = (d >> (nbits - i - 1)) & 1
-            # if PRINT_DEBUG_OPT: print(b)
+            if BIT_DEBUG_OPT: (self.BIT_DSC_PYTHON).write("%d" %b)
 
-            self.data[self.write_prt] = b
-            self.write_prt += 1
+            self.data[self.write_ptr] = b
+            self.write_ptr += 1
 
-            if (self.write_prt >= self.size):
-                self.write_prt = 0
+            if (self.write_ptr >= self.size):
+                self.write_ptr = 0

@@ -11,10 +11,12 @@ SAMPLE_VAL_PRINT = False
 RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
-VLCUNIT_FILE_OPT = False
+VLCUNIT_PRINT_OPT = False
+VLCUNIT_FILE_OPT = True
 SW_FLAT_DEBUG_OPT = False
 # SW_ORIG_DEBUG_OPT = True
 SW_PREV_DEBUG_OPT = False
+SW_FIFO_DEBUG_OPT = True
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):
@@ -227,8 +229,8 @@ def FlatnessAdjustment(vPos, hPos, groupCount, pps, rc_var, flat_var, define, ds
             rc_var.stQp = define.VERY_FLAT_QP
             rc_var.prevQp = define.VERY_FLAT_QP
 
-    print("[%d] [%d] masterQp : [%d], stQp : [%d], prevQp : [%d], flatnessType : [%d], firstFlat : [%d]"
-          %(vPos, hPos, rc_var.masterQp, rc_var.stQp, rc_var.prevQp, flat_var.flatnessType, flat_var.firstFlat))
+    # print("[%d] [%d] masterQp : [%d], stQp : [%d], prevQp : [%d], flatnessType : [%d], firstFlat : [%d]"
+    #       %(vPos, hPos, rc_var.masterQp, rc_var.stQp, rc_var.prevQp, flat_var.flatnessType, flat_var.firstFlat))
 
 
 def CalcFullnessOffset(vPos, hPos, pixelCount, groupCnt, pps, define, dsc_const, vlc_var, rc_var):
@@ -1361,12 +1363,15 @@ def RemoveBitsEncoderBuffer(pps, rc_var, dsc_const):
 
 def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos):
     if PRINT_FUNC_CALL_OPT: print("ProcessGroupEnc has called!!")
-    for i in range(pps.numSsps):
+    sz = 0
+
+    for i in range(dsc_const.numSsps):
 
         if (Shifters[i].fullness < dsc_const.maxSeSize[i]):
 
             for j in range(int(pps.muxWordSize / 8)):
                 sz = FIFOs[i].fullness
+                print("[%d] [%d] cpnt : [%d], Current Size : [%d]" %(vPos, hPos, i, sz))
 
                 if (sz >= 8):
                     #d = fifo_get_bits(FIFOs[i], 8, 0)
@@ -1382,7 +1387,18 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, 
                 ## put "d" into "buf" with size of "8 bits"
                 ## byte count value of "buf" is stored in "postMuxNumBits"
                 putbits(d, 8, buf)
-                # print("[%d] [%d] postMuxNumBits : %d" %(vPos, hPos, buf.postMuxNumBits))
+                if (SW_FIFO_DEBUG_OPT):
+                    try:
+                        write_str = ("[%d] [%d] size : [%d], cpnt : [%d], Write Val : [%d], postMuxNumBits : [%d]\n"
+                                     %(vPos, hPos, sz, i, d, buf.postMuxNumBits))
+                        (buf.FIFO_DSC_PYTHON).write(write_str)
+
+                    except:
+                        a = 0
+
+                # (buf.FIFO_DSC_PYTHON).write("[%d] [%d] cpnt : [%d], Write Val : [%x], postMuxNumBits : [%d]\n"
+                #                             % (vPos, hPos, i, d, buf.postMuxNumBits))
+
 
                 Shifters[i].fifo_put_bits(d, 8)
                 ## fifo_put_bits(&dsc_state->shifter[i], d, 8); // put 'd' of '8-bits' into 'shifter'

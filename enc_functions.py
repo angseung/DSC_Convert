@@ -100,7 +100,7 @@ def isOrigFlatHIndex(vPos, hPos, origLine, flat_var, rc_var, define, dsc_const, 
             min_val = 99999
 
             for j in range(fc2_start, fc2_end):
-                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j]
+                pixel_val = origLine[cpnt, define.PADDING_LEFT + hPos + j].item()
                 ## TODO : fix origline out of bound problem in flatness test 2...
                 ## Implemented temporarily pass keyword...
                 ##
@@ -553,10 +553,10 @@ def RateControl(hPos, vPos, pixelCount, sampModCnt, pps, dsc_const, ich_var, vlc
     elif cond7:  ## DO QP increment logic
         curQp = max(prevQp, min_QP)
 
-        inc_cond1 = (curQp == rc_var.prev2Qp)
-        inc_cond2 = ((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor))
-        inc_cond3 = (rc_var.prev2Qp < curQp)
-        inc_cond4 = ((((rc_var.rcSizeGroup * 2) < (rc_var.rcSizeGroupPrev * pps.rc_edge_factor)) and (curQp < pps.rc_quant_incr_limit0)))
+        inc_cond1 = (curQp == prev2Qp)
+        inc_cond2 = ((rcSizeGroup * 2) < (rcSizeGroupPrev * pps.rc_edge_factor))
+        inc_cond3 = (prev2Qp < curQp)
+        inc_cond4 = ((((rcSizeGroup * 2) < (rcSizeGroupPrev * pps.rc_edge_factor)) and (curQp < pps.rc_quant_incr_limit0)))
         inc_cond5 = (curQp < pps.rc_quant_incr_limit1)
 
         case1 = ((inc_cond1) and (inc_cond2))
@@ -1412,27 +1412,35 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
         if (flat_var.prevFirstFlat < 0):
             addbits(vlc_var, FIFO, 0, 1)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
-            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]"
+                                          % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'Zero' is Written [%d]\n"
+                                                                 % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
 
         else:
             addbits(vlc_var, FIFO, 1, 1)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'One' is Written [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
-            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'One' is Written [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'One' is Written [%d]"
+                                          % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] prevFirstFlat 'One' is Written [%d]\n"
+                                                                 % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
 
     ################################ Insert flat type ####################################
     if ((unit == 0) and (groupCnt % defines.GROUPS_PER_SUPERGROUP == 0) and (flat_var.firstFlat >= 0)):
 
         if (rc_var.masterQp >= defines.SOMEWHAT_FLAT_QP_THRESH):
             addbits(vlc_var, FIFO, flat_var.flatnessType, 1)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] flatnessType is Written [%d]" %(vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
-            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] flatnessType is Written [%d]\n" %(vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] flatnessType is Written [%d]"
+                                          %(vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] flatnessType is Written [%d]\n"
+                                                                 %(vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
 
         else:
             # flat_var.flatnessType = 0
             addbits(vlc_var, FIFO, flat_var.firstFlat, 2)
-            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] firstFlat is Written [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
-            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] firstFlat is Written [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] firstFlat is Written [%d]"
+                                          % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
+            if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] firstFlat is Written [%d]\n"
+                                                                 % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness))
             # pass
 
     ################################ ICH mode ####################################
@@ -1442,20 +1450,26 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
             if ich_var.prevIchSelected: # ICH -> ICH
                 addbits(vlc_var, FIFO, 1, ich_pfx) ## prefix is just bit "1"
-                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] ICH -> ICH Case... [%d], size : [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
-                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] ICH -> ICH Case... [%d], size : [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
+                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] ICH -> ICH Case... [%d], size : [%d]"
+                                              % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] ICH -> ICH Case... [%d], size : [%d]\n"
+                                                                     % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
 
             else:                       # P -> ICH
                 addbits(vlc_var, FIFO, 0, ich_pfx) ##
-                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] P -> ICH Case... [%d], size : [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
-                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] P -> ICH Case... [%d], size : [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
+                if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] P -> ICH Case... [%d], size : [%d]"
+                                              % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
+                if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] P -> ICH Case... [%d], size : [%d]\n"
+                                                                     % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, ich_pfx))
 
             for i in range(dsc_const.pixelsInGroup):
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS) # insert suffix
-                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]" % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
-                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]"
+                                                  % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] LUMA 5 bit ICH INDEX [%d] is Written [%d]\n"
+                                                                         % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
 
         #### ICH Lookup (unit > 0, suffix)
         else: ## Suffix of Chroma Units
@@ -1464,23 +1478,29 @@ def VLCunit(dsc_const, vlc_var, flat_var, rc_var, ich_var, pred_var, defines, un
 
                 if (dsc_const.ichIndexUnitMap[i] == unit):
                     addbits(vlc_var, FIFO, ich_var.ichLookup[i].item(), defines.ICH_BITS)
-                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]" % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
-                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_PRINT_OPT): print("[%d] [%d] masterQp : [%d], cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]"
+                                                  % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
+                    if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write("[%d] [%d] masterQp : [%d], cpnt : [%d] CHROMA 5 bit ICH INDEX [%d] is Written [%d]\n"
+                                                                         % (vPos, hPos, rc_var.masterQp, unit, ich_var.ichLookup[i].item(), FIFO.fullness))
 
     else: ## P-Mode
         if (add_prefix_one):
             addbits(vlc_var, FIFO, 1, prefix_size)
             if (VLCUNIT_PRINT_OPT): print(
-                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix with 1 is Written [%d], size : [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
+                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix with 1 is Written [%d], size : [%d]"
+                % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
             if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
-                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix with 1 is Written [%d], size : [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
+                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix with 1 is Written [%d], size : [%d]\n"
+                % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
 
         else:
             addbits(vlc_var, FIFO, 0, prefix_size)
             if (VLCUNIT_PRINT_OPT): print(
-                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix without 1 is Written [%d], size : [%d]" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
+                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix without 1 is Written [%d], size : [%d]"
+                % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
             if (VLCUNIT_FILE_OPT): vlc_var.SW_DEBUG_PYTHON.write(
-                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix without 1 is Written [%d], size : [%d]\n" % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
+                "[%d] [%d] masterQp : [%d], cpnt : [%d] P-Mode Prefix without 1 is Written [%d], size : [%d]\n"
+                % (vPos, hPos, rc_var.masterQp, unit, FIFO.fullness, prefix_size))
 
         for i in range(defines.SAMPLES_PER_UNIT):
 

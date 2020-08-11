@@ -5,7 +5,7 @@ from dsc_fifo import DSCFifo
 from dsc_enc_buf import *
 PRINT_QP_OPT = False
 MAP_QLEVEL_PRINT = False
-SW_QP_DEBUG_OPT = False
+SW_QP_DEBUG_OPT = True
 
 def dsc_encoder(pps, pic, op, buf, pic_val):
     ################ Declare variables used to each block ################
@@ -79,8 +79,8 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         #################### Get input line ###################
         qp = rc_var.masterQp
         if (SW_QP_DEBUG_OPT):
-            rc_var.SW_QP_DEBUG_PYTHON.write("[%d] [%d] Current masterQp : [%d]\n" % (vPos, hPos, rc_var.masterQp))
-            print("[%d] [%d] Current masterQp : [%d]" % (vPos, hPos, rc_var.masterQp))
+            rc_var.SW_QP_DEBUG_PYTHON.write("[%d] [%d] Current masterQp : [%d], stQp : [%d], prevQp : [%d]\n" % (vPos, hPos, rc_var.masterQp, rc_var.stQp, rc_var.prevQp))
+            print("[%d] [%d] Current masterQp : [%d], stQp : [%d], prevQp : [%d]" % (vPos, hPos, rc_var.masterQp, rc_var.stQp, rc_var.prevQp))
 
         if (hPos == 0):
             ## Get input image when the first pixel of each line starts

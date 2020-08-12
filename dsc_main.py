@@ -90,10 +90,12 @@ for ys in range(0, pps.pic_height, pps.slice_height):
     #print(ys)
 
     # One sliced line
-    for xs in range(0, pps.pic_width, pps.slice_width):
+    for (xs_idx, xs) in enumerate(range(0, pps.pic_width, pps.slice_width)):
         # print("PROCESSING PIC POSITION : [%04d] [%04d]" %(xs, ys))
         ##### Store current position in this loop for debuging...
         pic_val.set_pos(xs, ys)
+        buf.slice_index = xs_idx ## Set Slice Index in a Buffer Object...
+
         ####### Slicing the picture #######
         slice_picture = orig_pixel[xs : xs + pps.slice_width, ys : ys + pps.slice_height, :]
 

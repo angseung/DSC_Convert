@@ -11,9 +11,14 @@ class DSCBuffer():
         self.slices_per_line = int(pps.pic_width / pps.slice_width)
 
         ## Buffer Structure : (slices_per_line, buf_size) shape ndarray...
-        self.data = np.zeros((self.slices_per_line, self.buf_size), dtype=np.bool)
-        # self.data = np.zeros(buf_size * slices_per_line, dtype = np.bool)
-        self.slice_index = 0
+        # self.data = np.zeros((self.slices_per_line, self.buf_size), dtype = np.bool)
+        self.data = np.zeros(self.buf_size * self.slices_per_line, dtype = np.bool)
+        self.slice_index = 0 ## Value : [0, 1, 2, ... , slices_per_line]
+
+        ###################
+        # Write Data Like THIS:...
+        # self.data[self.slice_index, bit_range_1 : bit_range_2] = Value_from_Addbits_function...
+        ###################
 
         ## Number of bits read/written post-mux
         self.postMuxNumBits = 0 ## Pointer for data[i, :] Vector.
@@ -25,7 +30,8 @@ class DSCBuffer():
         return None
 
     def buf_reset(self):
-        self.data[:] = 0
+        self.data[:, :] = 0
+        # self.data[:] = 0
         self.postMuxNumBits = 0
         self.slice_index = 0
 

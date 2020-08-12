@@ -65,7 +65,7 @@ class initFlatVariables:
 
 
 class initVlcVariables:
-    def __init__(self, defines):
+    def __init__(self, defines, buf):
         self.numBits = 0
         # self.postMuxNumBits = 0 ## MOVED TO ENC BUFFER MODEL...
         self.rcSizeUnit = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
@@ -75,7 +75,7 @@ class initVlcVariables:
         self.forceMpp = 0
         #self.shifterCnt = np.zeros(defines.MAX_UNITS_PER_GROUP, ).astype(np.uint32)
         ## REMOVED IN 2020.07.29 DEBUG #12
-        self.SW_DEBUG_PYTHON = open("C:/Users/ISW/PycharmProjects/DSC_Py/SW_DEBUG_PYTHON.txt", "w")
+        self.SW_DEBUG_PYTHON = open(buf.SW_DEBUG_PYTHON, "w")
 
 class initRcVariables:
     def __init__(self, pps):
@@ -207,11 +207,13 @@ class initDscConstants:
             self.cpntBitDepth[i] = (pps.bits_per_component)
             diff_cond = (pps.convert_rgb & (i is not 0) & (i is not 3) & (pps.bits_per_component is not 0))  # 16 bpc condition
 
-            if diff_cond:
+            if (diff_cond):
                 self.cpntBitDepth[i] += 1
                 # range_[i] *= 2
+
         self.maxSeSize = np.zeros(4, dtype = np.int32)
-        if pps.bits_per_component == 16:
+
+        if (pps.bits_per_component == 0):
             self.maxSeSize[0] = self.maxSeSize[1] = self.maxSeSize[2] = self.maxSeSize[3] = 64
         else:
             self.maxSeSize[0] = (pps.bits_per_component * 4) + 4

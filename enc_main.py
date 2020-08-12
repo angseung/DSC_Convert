@@ -14,7 +14,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
     ich_var = initIchVariables(defines)
     pred_var = initPredVariables(defines, dsc_const)
     flat_var = initFlatVariables(defines)
-    vlc_var = initVlcVariables(defines)
+    vlc_var = initVlcVariables(defines, buf)
     rc_var = initRcVariables(pps)
 
     ########### Declare buffers ########

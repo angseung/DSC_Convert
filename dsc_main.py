@@ -8,14 +8,15 @@ from matplotlib import pyplot as plt
 from dsc_enc_buf import DSCBuffer ,write_dsc_data
 from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, \
     initPredVariables, initRcVariables, initVlcVariables, PicPosition
-from dsc_utils import rgb2ycocg
+from dsc_utils import rgb2ycocg, ycocg2rgb
 from matplotlib import image as mpimg
+from matplotlib import pyplot as plt
 
-IMAGE_DEBUG_OPT = False
+IMAGE_DEBUG_OPT = True
 dsc_path = "w1.dsc"
 # full_picture = get_XXXX()
 ###### Get picture  #######
-image_path = "w1.jpeg"
+image_path = "w1.ppm"
 # image_path = "w1.ppm"
 # im = Image.open(image_path)
 # im = mpimg.imread(image_path)
@@ -71,6 +72,7 @@ if True:
     # im = im.convert("YCbCr")
     orig_pixel = rgb2ycocg(pps, orig_pixel_rgb)
     orig_pixel = orig_pixel.transpose([1, 0, 2])
+    # orig_pixel = orig_pixel_rgb.transpose([1, 0, 2])
 
 elif (im.mode) == 'YCbCr':
     pass
@@ -86,8 +88,9 @@ buf = DSCBuffer(pps)
 ## write Magic Number and PPS datas...
 write_pps(dsc_path, pps)
 
-for ys in range(0, pps.pic_height, pps.slice_height):
+for (ys_idx, ys) in enumerate(range(0, pps.pic_height, pps.slice_height)):
     #print(ys)
+    buf.SW_DEBUG_PYTHON = ("C:/Users/ISW/PycharmProjects/DSC_Py/SW_DEBUG_PYTHON_%2d.txt" %(ys_idx))
 
     # One sliced line
     for (xs_idx, xs) in enumerate(range(0, pps.pic_width, pps.slice_width)):
@@ -102,12 +105,13 @@ for ys in range(0, pps.pic_height, pps.slice_height):
         if IMAGE_DEBUG_OPT:
             print("xs : [%d %d], ys : [%d %d]" % (xs, xs + pps.slice_width, ys, ys + pps.slice_height))
             print(slice_picture.shape)
-            img = Image.fromarray(slice_picture, 'YCbCr')
+            slice_picture_rgb = ycocg2rgb(pps, slice_picture)
+            img = Image.fromarray(slice_picture_rgb, 'RGB')
             img.show()
 
-        dsc_encoder(pps, orig_pixel, output_pic, buf, pic_val)
-        buf.slice_index += 1 # Increase Slice index after one slice processed...
-
-    ####### Write encoded dsc data to output file #######
-    write_dsc_data(dsc_path, buf, pps)
-    buf.buf_reset() # reset buf to use it again lext ys loop
+    #     dsc_encoder(pps, orig_pixel, output_pic, buf, pic_val)
+    #     buf.slice_index += 1 # Increase Slice index after one slice processed...
+    #
+    # ####### Write encoded dsc data to output file #######
+    # write_dsc_data(dsc_path, buf, pps)
+    # buf.buf_reset() # reset buf to use it again lext ys loop

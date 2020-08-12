@@ -158,9 +158,6 @@ def rgb2ycocg(pps, im):
     for xs in range(pps.pic_height): # 1080
         for ys in range(pps.pic_width): # 1920
 
-            if (ys > 110):
-                a = 100
-
             co = (im[xs, ys, r].item() - im[xs, ys, b].item())
             t = (im[xs, ys, b]).item() + (co >> 1)
             cg = (im[xs, ys, g]).item() - t
@@ -188,3 +185,51 @@ def rgb2ycocg(pps, im):
     if (SW_ORIG_DEBUG_OPT):
         SW_ORIG_DEBUG_FILE.close()
     return im_yuv
+
+def ycocg2rgb(pps, im):
+    if(SW_ORIG_DEBUG_OPT):
+        SW_ORIG_DEBUG_FILE = open("ORIG_DEBUG_PY.txt", "w")
+
+    im_rgb = np.zeros(im.shape, dtype = np.uint32)
+    half = 1 << (pps.bitsPerPixel - 1)
+    max = (1 << pps.bitsPerPixel) - 1
+
+    (width, height, ch) = im.shape
+
+    y_ = 0
+    co_ = 1
+    cg_ = 2
+
+    for xs in range(width): # 1080
+        for ys in range(height): # 1920
+
+            y = im[xs, ys, y_].item()
+
+            if (pps.bitsPerPixel == 16):
+                raise NotImplemented
+
+            else:
+                co = im[xs, ys, co_].item() - 2 * half
+                cg = im[xs, ys, cg_].item() - 2 * half
+
+            t = y - (cg >> 1)
+            g = cg + t
+            b = t - (co >> 1)
+            r = co + b
+
+            r = CLAMP(r, 0, max)
+            g = CLAMP(g, 0, max)
+            b = CLAMP(b, 0, max)
+
+            im_rgb[xs, ys, :] = [r, g, b]
+
+            ## DEBUG ONLY
+            # a = [y, co, cg]
+            # a = 0
+
+            if (SW_ORIG_DEBUG_OPT):
+                SW_ORIG_DEBUG_FILE.write("Y : [%d] Co : [%d], Cg : [%d]\n" %(y, co, cg))
+
+    if (SW_ORIG_DEBUG_OPT):
+        SW_ORIG_DEBUG_FILE.close()
+    return im_rgb

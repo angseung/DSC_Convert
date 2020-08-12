@@ -2,7 +2,7 @@ import numpy as np
 from init_pps_params import initPps
 PRINT_DEBUG_OPT = False
 PRINT_FUNC_CALL_OPT = False
-BUF_BIT_DEBUG_OPT = True
+BUF_BIT_DEBUG_OPT = False
 
 class DSCBuffer():
 
@@ -26,12 +26,13 @@ class DSCBuffer():
 
         self.BIT_DSC_PYTHON = open("BUF_BIT_DSC_PYTHON.txt", "wb")
         self.FIFO_DSC_PYTHON = open("SW_FIFO_DEBUG_PYTHON.txt", "w")
+        self.SW_DEBUG_PYTHON = None
 
         return None
 
     def buf_reset(self):
-        self.data[:, :] = 0
-        # self.data[:] = 0
+        # self.data[:, :] = 0
+        self.data[:] = 0
         self.postMuxNumBits = 0
         self.slice_index = 0
 
@@ -43,7 +44,7 @@ def write_dsc_data(path, buf, pps):
     if PRINT_FUNC_CALL_OPT: print("currline_to_pic has called!!")
     slices_per_line = int(pps.pic_width / pps.slice_width)
     current_idx = np.zeros([slices_per_line, 1], dtype = np.int32)
-    # total_byte = 0
+    total_byte = 0
     nbytes = pps.chunk_size ## Unit of BYTE!
     nbits = nbytes * 8 ## Buffer is an bool numpy array in python model...
 

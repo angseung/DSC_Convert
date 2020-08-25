@@ -228,7 +228,7 @@ def ycocg2rgb(pps, im):
             # a = 0
 
             if (SW_ORIG_DEBUG_OPT):
-                SW_ORIG_DEBUG_FILE.write("Y : [%d] Co : [%d], Cg : [%d]\n" %(y, co, cg))
+                SW_ORIG_DEBUG_FILE.write("Y : [%d] Co : [%d], Cg : [%d]\n" %(r, g, b))
 
     if (SW_ORIG_DEBUG_OPT):
         SW_ORIG_DEBUG_FILE.close()

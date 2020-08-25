@@ -12,7 +12,7 @@ from dsc_utils import rgb2ycocg, ycocg2rgb
 from matplotlib import image as mpimg
 from matplotlib import pyplot as plt
 
-IMAGE_DEBUG_OPT = True
+IMAGE_DEBUG_OPT = False
 dsc_path = "w1.dsc"
 # full_picture = get_XXXX()
 ###### Get picture  #######
@@ -109,9 +109,9 @@ for (ys_idx, ys) in enumerate(range(0, pps.pic_height, pps.slice_height)):
             img = Image.fromarray(slice_picture_rgb, 'RGB')
             img.show()
 
-    #     dsc_encoder(pps, orig_pixel, output_pic, buf, pic_val)
-    #     buf.slice_index += 1 # Increase Slice index after one slice processed...
-    #
-    # ####### Write encoded dsc data to output file #######
-    # write_dsc_data(dsc_path, buf, pps)
-    # buf.buf_reset() # reset buf to use it again lext ys loop
+        dsc_encoder(pps, orig_pixel, output_pic, buf, pic_val)
+        buf.slice_index += 1 # Increase Slice index after one slice processed...
+
+    ####### Write encoded dsc data to output file #######
+    write_dsc_data(dsc_path, buf, pps)
+    buf.buf_reset() # reset buf to use it again lext ys loop

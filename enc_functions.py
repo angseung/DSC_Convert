@@ -1388,13 +1388,18 @@ def ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, 
                 ## byte count value of "buf" is stored in "postMuxNumBits"
                 putbits(d, 8, buf)
                 if (SW_FIFO_DEBUG_OPT):
-                    try:
-                        write_str = ("[%d] [%d] size : [%d], cpnt : [%d], Write Val : [%d], postMuxNumBits : [%d]\n"
-                                     %(vPos, hPos, sz, i, d, buf.postMuxNumBits))
-                        (buf.FIFO_DSC_PYTHON).write(write_str)
+                    write_str = ("[%d] [%d] size : [%d], cpnt : [%d], Write Val : [%d], postMuxNumBits : [%d]\n"
+                                 %(vPos, hPos, sz, i, d, buf.postMuxNumBits))
+                    (buf.FIFO_DSC_PYTHON).write(write_str)
 
-                    except:
-                        a = 0
+                # if (SW_FIFO_DEBUG_OPT):
+                #     try:
+                #         write_str = ("[%d] [%d] size : [%d], cpnt : [%d], Write Val : [%d], postMuxNumBits : [%d]\n"
+                #                      %(vPos, hPos, sz, i, d, buf.postMuxNumBits))
+                #         (buf.FIFO_DSC_PYTHON).write(write_str)
+                #
+                #     except:
+                #         a = 0
 
                 # (buf.FIFO_DSC_PYTHON).write("[%d] [%d] cpnt : [%d], Write Val : [%x], postMuxNumBits : [%d]\n"
                 #                             % (vPos, hPos, i, d, buf.postMuxNumBits))

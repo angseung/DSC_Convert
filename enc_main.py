@@ -301,7 +301,6 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
             if (vPos >= pps.slice_height):
                 done = 1
                 buf.BIT_DSC_PYTHON.close()
-                buf.FIFO_DSC_PYTHON.close()
                 flat_var.SW_FLAT_DEBUG_PYTHON.close()
                 flat_var.SW_ORIG_DEBUG_PYTHON.close()
                 vlc_var.SW_DEBUG_PYTHON.close()
@@ -319,6 +318,7 @@ def dsc_encoder(pps, pic, op, buf, pic_val):
         ProcessGroupEnc(pps, dsc_const, vlc_var, buf, FIFOs, seSizeFIFOs, Shifters, vPos, hPos)
         # End of While (Encoding process)
 
+    buf.FIFO_DSC_PYTHON.close()
     #######################################################################
 
     ## Erase FIFO data...

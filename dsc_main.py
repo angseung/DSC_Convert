@@ -11,7 +11,6 @@ from init_enc_params import initDefines, initFlatVariables, initDscConstants, in
 from dsc_utils import rgb2ycocg, ycocg2rgb
 from matplotlib import image as mpimg
 from matplotlib import pyplot as plt
-import numpy as np
 
 IMAGE_DEBUG_OPT = False
 dsc_path = "w1.dsc"

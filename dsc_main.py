@@ -90,7 +90,7 @@ write_pps(dsc_path, pps)
 
 for (ys_idx, ys) in enumerate(range(0, pps.pic_height, pps.slice_height)):
     #print(ys)
-    buf.SW_DEBUG_PYTHON = ("C:/Users/ISW/PycharmProjects/DSC_Py/SW_DEBUG_PYTHON_%2d.txt" %(ys_idx))
+    buf.SW_DEBUG_PYTHON = ("SW_DEBUG_PYTHON_%2d.txt" %(ys_idx))
 
     # One sliced line
     for (xs_idx, xs) in enumerate(range(0, pps.pic_width, pps.slice_width)):

@@ -12,11 +12,11 @@ RC_PRINT_OPT = False
 STQP_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
 VLCUNIT_PRINT_OPT = False
-VLCUNIT_FILE_OPT = True
+VLCUNIT_FILE_OPT = False
 SW_FLAT_DEBUG_OPT = False
 # SW_ORIG_DEBUG_OPT = True
 SW_PREV_DEBUG_OPT = False
-SW_FIFO_DEBUG_OPT = True
+SW_FIFO_DEBUG_OPT = False
 
 
 def currline_to_pic(op, vPos, pps, dsc_const, defines, pic_val, currLine):

@@ -131,8 +131,8 @@ def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = 
 
         ##########            Write DSC const                    ######
 
-        qtc = dsc_const.quantTableChroma ## TODO : DEBUG HERE
-        for i in range(5) :
+        qtc = dsc_const.quantTableChroma ## TODO : quantTableChroma has 16 elements
+        for i in range(5):
             tmp = (qtc[i*6+0] + qtc[i*6+1] * 2 ** 5 + qtc[i*6+2] * 2 ** 10 + qtc[i*6+3] * 2 ** 15 +
                    qtc[i*6+4] * 2 ** 20 + qtc[i*6+5] * 2 ** 25).to_bytes(4, 'big')
             f.write(tmp)
@@ -140,8 +140,8 @@ def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = 
         tmp = (qtc[30] + qtc[31] * 2 ** 5).to_bytes(4, 'big')
         f.write(tmp)
 
-        qtl = dsc_const.quantTableLuma
-        for i in range(5) :
+        qtl = dsc_const.quantTableLuma ## TODO : quantTableLuma has 16 elements
+        for i in range(5):
             tmp = (qtl[i*6+0] + qtl[i*6+1] * 2 ** 5 + qtl[i*6+2] * 2 ** 10 + qtl[i*6+3] * 2 ** 15 +
                    qtl[i*6+4] * 2 ** 20 + qtl[i*6+5] * 2 ** 25).to_bytes(4, 'big')
             f.write(tmp)

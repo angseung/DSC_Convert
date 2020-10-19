@@ -131,7 +131,7 @@ def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = 
 
         ##########            Write DSC const                    ######
 
-        qtc = dsc_const.quantTableChroma
+        qtc = dsc_const.quantTableChroma ## TODO : DEBUG HERE
         for i in range(5) :
             tmp = (qtc[i*6+0] + qtc[i*6+1] * 2 ** 5 + qtc[i*6+2] * 2 ** 10 + qtc[i*6+3] * 2 ** 15 +
                    qtc[i*6+4] * 2 ** 20 + qtc[i*6+5] * 2 ** 25).to_bytes(4, 'big')

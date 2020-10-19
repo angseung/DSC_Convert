@@ -1,6 +1,6 @@
 from PPS_readnwrite import parse_pps
 
-path = "w1.dsc"
+path = "red_img_1_1.dsc"
 
 from init_pps_params import initPps
 

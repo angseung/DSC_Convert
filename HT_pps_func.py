@@ -2,6 +2,141 @@ import os
 import numpy as np
 from init_enc_params import *
 
+qlevel_luma_8bpc = [0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 7,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_chroma_8bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 8,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_luma_10bpc = [0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7,
+                     7, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_chroma_10bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+                       9, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_luma_12bpc = [0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7,
+                     7, 8, 8, 9, 9, 9, 10, 11, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_chroma_12bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+                       9, 9, 10, 10, 11, 12, 12, 12, 0, 0, 0, 0, 0, 0, 0, 0]
+qlevel_luma_14bpc = [0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7,
+                     7, 8, 8, 9, 9, 10, 10, 11, 11, 11, 12, 13, 0, 0, 0, 0]
+qlevel_chroma_14bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+                       9, 9, 10, 10, 11, 11, 12, 12, 13, 14, 14, 14, 0, 0, 0, 0]
+qlevel_luma_16bpc = [0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7,
+                     7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 15]
+qlevel_chroma_16bpc = [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15,
+                       16, 16, 16]
+
+class initDefines:
+    def __init__(self, pps):
+        self.NUM_BUF_RANGES =          15
+        self.NUM_COMPONENTS =          4
+        self.MAX_UNITS_PER_GROUP =     4
+        self.MAX_NUM_SSPS = 		   4   # Number of substreams (ie., substream processors)
+        self.SAMPLES_PER_UNIT =        3
+        self.MAX_PIXELS_PER_GROUP =    6
+        self.GROUPS_PER_SUPERGROUP =   4
+        self.BP_RANGE =                13 #  was 10, modified for high throughput test modes
+        self.BP_SIZE = 				   3
+        self.PRED_BLK_SIZE = 		   3
+        self.ICH_BITS = 			   5
+        self.ICH_SIZE =                1 << self.ICH_BITS
+        self.ICH_PIXELS_ABOVE =        7
+        self.ICH_LAMBDA = 			   4
+        self.OFFSET_FRACTIONAL_BITS =  11
+        self.PPS_SIZE = 		       128
+        self.BP_EDGE_COUNT = 		   3
+        self.BP_EDGE_STRENGTH =        32
+        self.PADDING_LEFT =            1  # Pixels to pad line arrays to the left
+        self.PADDING_RIGHT =           0  # Pixels to pad line arrays to the right
+        self.RC_SCALE_BINARY_POINT =   3
+        self.UNITS_PER_GROUP = 4 if pps.native_422 else 3
+        self.SOMEWHAT_FLAT_QP_THRESH = pps.somewhat_flat_qp_thresh
+        self.SOMEWHAT_FLAT_QP_DELTA =  pps.somewhat_flat_qp_delta
+        self.VERY_FLAT_QP = 1 + (2 * (pps.bits_per_component - 8))
+        if pps.native_422:
+            self.OVERFLOW_AVOID_THRESHOLD = -224
+        else:
+            self.OVERFLOW_AVOID_THRESHOLD = -172
+
+        self.LARGE_INT = 			  1 << 30
+
+        self.PT_MAP = 0
+        self.PT_LEFT = 1
+        self.PT_BLOCK = 2
+        self.MAX_SE_SIZE = 4 * pps.bits_per_component + 4
+
+
+class initDscConstants:
+    def __init__(self, pps, defines):
+        if pps.bits_per_pixel >> 4 == 8:
+            self.quantTableLuma = qlevel_luma_8bpc
+            self.quantTableChroma = qlevel_chroma_8bpc
+        elif pps.bits_per_pixel >> 4 == 10:
+            self.quantTableLuma = qlevel_luma_10bpc
+            self.quantTableChroma = qlevel_chroma_10bpc
+        elif pps.bits_per_pixel >> 4 == 12:
+            self.quantTableLuma = qlevel_luma_12bpc
+            self.quantTableChroma = qlevel_chroma_12bpc
+        elif pps.bits_per_pixel >> 4 == 14:
+            self.quantTableLuma = qlevel_luma_14bpc
+            self.quantTableChroma = qlevel_chroma_14bpc
+        elif pps.bits_per_pixel >> 4 == 0:
+            self.quantTableLuma = qlevel_luma_16bpc
+            self.quantTableChroma = qlevel_chroma_16bpc
+        else: # Error
+            raise NotImplementedError
+
+        if (pps.line_buf_depth == 0):
+            self.lineBufDepth = 16
+        else:
+            self.lineBufDepth = pps.line_buf_depth
+
+        self.full_ich_err_precision = 0 ## TODO check the variable
+
+        if pps.native_420 or pps.native_422:
+            self.sliceWidth = int(pps.slice_width / 2)
+        else:
+            self.sliceWidth = int(pps.slice_width)
+
+        self.pixelsInGroup = 3
+
+        self.ichIndexUnitMap = np.zeros(defines.MAX_PIXELS_PER_GROUP, )
+        for i in range(defines.MAX_PIXELS_PER_GROUP):
+            if (pps.native_422):
+                self.ichIndexUnitMap[0] = 3 # put first ICH index with 2nd luma unit
+                self.ichIndexUnitMap[1] = 1
+                self.ichIndexUnitMap[2] = 2
+                self.ichIndexUnitMap[3] = 0
+            else:
+                self.ichIndexUnitMap[i] = i % 3
+
+        if pps.native_422:
+            self.unitsPerGroup = 4
+            self.numSsps = 4
+            self.numComponents = 4
+        else:
+            self.unitsPerGroup = 3
+            self.numSsps = 3
+            self.numComponents = 3
+
+        # range_ = np.zeros(self.NUM_COMPONENTS, )
+        self.cpntBitDepth = np.zeros(defines.NUM_COMPONENTS, ).astype(np.int32)
+        for i in range(defines.NUM_COMPONENTS):
+            self.cpntBitDepth[i] = (pps.bits_per_component)
+            diff_cond = (pps.convert_rgb & (i is not 0) & (i is not 3) & (pps.bits_per_component is not 0))  # 16 bpc condition
+
+            if (diff_cond):
+                self.cpntBitDepth[i] += 1
+                # range_[i] *= 2
+
+        self.maxSeSize = np.zeros(4, dtype = np.int32)
+
+        if (pps.bits_per_component == 0):
+            self.maxSeSize[0] = self.maxSeSize[1] = self.maxSeSize[2] = self.maxSeSize[3] = 64
+        else:
+            self.maxSeSize[0] = (pps.bits_per_component * 4) + 4
+            self.maxSeSize[1] = (pps.bits_per_component + pps.convert_rgb) * 4
+            self.maxSeSize[2] = (pps.bits_per_component + pps.convert_rgb) * 4
+            self.maxSeSize[3] = (pps.bits_per_component)  * 4
+
+
 def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = None):
     RESERVED = 0
     with open(path, "wb") as f:
@@ -126,8 +261,7 @@ def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = 
         tmp = RESERVED.to_bytes(2, 'big')
         f.write(tmp)
 
-        #tmp = RESERVED.to_bytes(34, 'big')
-        #f.write(tmp)
+        ## 94 Bytes...
 
         ##########            Write DSC const                    ######
 
@@ -168,136 +302,3 @@ def tb_pps(path = "pps_write_test.txt", pps = None, dsc_const = None, defines = 
 
         tmp = (pps.chunk_size * pps.slice_height * 8).to_bytes(4, 'big')
         f.write(tmp)
-
-def parse_pps(path = "w1.dsc", PRINT_PPS_OPT = False):
-    PPS = initPps()
-
-    with open(path, "rb") as f:
-        if (f.read(4) != b'DSCF'):  # Magic Number
-            raise ValueError("This file is not a DSC file.")
-
-        tmp = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)
-        PPS.dsc_version_major = (tmp >> 4) & 0xf
-        PPS.dsc_version_minor = tmp & 0xf
-
-        PPS.pps_identifier = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)  # PPS Identifier
-        PPS.RESERVED = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)  # RESERVED 8bits
-
-        tmp = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)
-        PPS.bits_per_component = (tmp >> 4) & 0xf
-        PPS.line_buf_depth = tmp & 0xf
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.block_pred_enable = (tmp >> 13) & 0b1
-        PPS.convert_rgb = (tmp >> 12) & 0b1
-        PPS.simple_422 = (tmp >> 11) & 0b1
-        PPS.vbr_enable = (tmp >> 10) & 0b1
-        PPS.bits_per_pixel = (tmp & 0b0000001111111111)
-
-        PPS.pic_height = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.pic_width = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.slice_height = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.slice_width = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.chunk_size = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.initial_xmit_delay = (tmp & 0b0000001111111111)
-
-        PPS.initial_dec_delay = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.initial_scale_value = (tmp & 0b0000000000111111)
-
-        PPS.scale_increment_interval = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.scale_decrement_interval = (tmp & 0xfff)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.first_line_bpg_ofs = tmp & 0b0000000000011111
-
-        PPS.nfl_bpg_offset = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.slice_bpg_offset = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.initlal_offset = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.final_offset = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.flatness_min_qp = (tmp & 0b0001111100000000) >> 8
-        PPS.RESERVED = 0x0
-        PPS.flatness_max_qp = (tmp & 0b0000000000011111)
-
-        PPS.rc_model_size = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.rc_edge_factor = (tmp & 0b0000111100000000) >> 8
-        PPS.RESERVED = 0x0
-        PPS.rc_quant_icnr_limit0 = (tmp & 0b0000000000011111)
-
-        tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.rc_quant_icnr_limit1 = (tmp & 0b0001111100000000) >> 8
-        PPS.rc_tgt_offset_hi = (tmp & 0b0000000011110000) >> 4
-        PPS.rc_tgt_offset_lo = (tmp & 0b0000000000001111)
-
-        # rc_buf_thresh, (14, ) shape ndarray, with 6 bit fractional bits
-        PPS.rc_buf_thresh = np.array([
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6,
-            int.from_bytes(f.read(1), byteorder = 'big', signed = 0) << 6
-        ])
-
-        # rc_range_parameters, (15, 3) shape ndarray
-        rc_range_parameters = np.zeros(shape = (15, 3), dtype = np.int32)
-        for i in range(rc_range_parameters.shape[0]):
-            tmp = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-            rc_range_parameters[i, :] = [tmp >> 11, (tmp >> 6) & 0b11111, tmp & 0b111111]
-            if rc_range_parameters[i, 2] >= 32:
-                rc_range_parameters[i, 2] -= 64
-
-        # insert ndarray to dict PPS
-        PPS.rc_range_parameters = rc_range_parameters
-
-        tmp = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.native_420 = (tmp >> 1) & 0b1
-        PPS.native_422 = tmp & 0b1
-
-        tmp = int.from_bytes(f.read(1), byteorder = 'big', signed = 0)
-        PPS.RESERVED = 0x0
-        PPS.second_line_bpg_offset = tmp & 0b11111
-
-        PPS.nsl_bpg_offset = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-        PPS.second_line_ofs_adj = int.from_bytes(f.read(2), byteorder = 'big', signed = 0)
-
-        # PPS.RESERVED = int.from_bytes(f.read(34), byteorder = 'big', signed = 0)
-
-        for i in range(5):
-            tmp = int.from_bytes(f.read(4), byteorder = 'big', signed = 0)
-
-
-    if PRINT_PPS_OPT:
-        for key, val in PPS.items():
-            print("PPS : %s, Value : " %key, val)
-
-    return PPS
-
-
-

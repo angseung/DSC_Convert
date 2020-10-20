@@ -1,6 +1,6 @@
 import numpy as np
 from HT_pps_func import *
-from init_enc_params import *
+# from init_enc_params import *
 from init_pps_params import *
 import os
 

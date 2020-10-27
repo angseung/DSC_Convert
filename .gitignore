@@ -181,3 +181,7 @@ cython_debug/
 /SW_DEBUG_PYTHON_ 9.txt
 /red_img_1_1.dsc
 HT_PPS_HEX.bin
+RED_image.dsc
+RED_image_1_1.dsc
+RED_image_2_1.dsc
+RGBW_image.dsc

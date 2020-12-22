@@ -1,6 +1,8 @@
 from PPS_readnwrite import parse_pps
 
-path = "RED_image_2_1.dsc"
+# path = "NEW_image.dsc"
+# path = "NEW_image_pps_edit.dsc"
+path = "NEW_image_full_edit.dsc"
 
 from init_pps_params import initPps
 

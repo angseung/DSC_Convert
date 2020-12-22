@@ -5,9 +5,8 @@ from enc_main import dsc_encoder
 from PIL import Image
 from PPS_readnwrite import write_pps, parse_pps
 from matplotlib import pyplot as plt
-from dsc_enc_buf import DSCBuffer ,write_dsc_data
-from init_enc_params import initDefines, initFlatVariables, initDscConstants, initIchVariables, \
-    initPredVariables, initRcVariables, initVlcVariables, PicPosition
+from dsc_enc_buf import DSCBuffer, write_dsc_data
+from init_enc_params import *
 from dsc_utils import rgb2ycocg, ycocg2rgb
 from matplotlib import image as mpimg
 from matplotlib import pyplot as plt
